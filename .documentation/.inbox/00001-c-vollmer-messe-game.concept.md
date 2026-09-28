@@ -2,7 +2,7 @@
 | | |
 |-|-|
 | **Erstelldatum:** | 2026-09-09 |
-| **Letzte Änderung:** | 2026-09-23 |
+| **Letzte Änderung:** | 2026-09-28 |
 | **Issue:** | 00001 |
 
 ## Commit-Vorschlag für den finalen Gesamt-Commit
@@ -15,7 +15,7 @@
 - Geplante Umsetzung: humorvolles Touch-Arcade-Spiel auf einem Windows-Convertible mit lokaler Kabelanzeige und optionalem Beobachter.
 - Geplante Entscheidung: autoritativer ASP.NET-Core-Server, Phaser/TypeScript-Spielclients und Blazor-Betriebshülle.
 - Geplante Absicherung: automatisierte Regeltests sowie Touch-, Latenz-, Last- und Hardware-Abnahme.
-- Nachweise vor Messebetrieb: konkrete Serienkonfiguration, Monitor-/Audiofunktion sowie Übernahme und Lieferung der Assets.
+- Nachweise vor Messebetrieb: konkrete Serienkonfiguration, Monitor-/Audiofunktion, Showroom-Bühnenbild mit freier Zielfläche sowie Lieferung und Abnahme der 37 Assets aus 00002.
 ```
 
 # 0. Entscheidungsvorlage
@@ -76,6 +76,8 @@ Der Ablauf beginnt im Attract-Mode: bewegte Werkzeugsilhouetten und eine kurze, 
 
 Es existieren noch keine Anwendungsprojekte, Anwendungstests oder Build-/Deployment-Skripte. Das Anschauungspaket und `yell01.mp3` bis `yell10.mp3` sind Medienbestand, keine fertige Anwendung. Die globale [.gitignore](../../.gitignore) bleibt unverändert. Der Nutzer bestätigt ausschließlich royaltyfree verwendbare oder eigene Kreationen/Kompositionen und übernimmt Pitching/Bearbeitung selbst. Damit ist OP-03 geklärt; selbst gewählte Ergänzungen müssen ebenfalls frei für den vorgesehenen Einsatz verwendbar sein.
 
+Für die Werkzeugbilder (Bohrer, PKD-Fräser, Sägeblätter) fehlte bis 2026-09-27 eine konkrete Produktions- und Trefferzonenvorgabe: Es war nicht festgelegt, wie ein Bild aufgebaut sein muss und welche Zone bei Tap oder Swipe Erfolg oder Misserfolg auslöst. Diese Lücke ist jetzt geschlossen: Kap. 3.3.1 regelt verbindlich Erfolg/Misserfolg je Geste, Kap. 3.4.5 die verbindlichen Zonen-, Größen- und Zustandsregeln. Am 2026-09-28 kam eine dritte Lücke hinzu: Bildmengen, Zustandsbilder, Störgegenstände und die Technik der 2D-Tiefe waren nicht bestimmt. **Dieses Hauptkonzept führt daher keine Bildlieferliste mehr.** Die Bildlieferliste mit Anzahl, IDs, Varianten, Zuständen (`dull`, `in_progress`, `sharp`, `failed`), Requisiten, Störgegenständen, Ablagestruktur und dem Tiefenverfahren steht in [00002](00002-c-vollmer-assetlieferung.concept.md); die Manifestgenerierung und die Autoren-Hilfstools regelt [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md).
+
 # 3. Lösungskonzept / Soll-Zustand
 
 ## 3.1 tl;dr
@@ -95,8 +97,8 @@ Es existieren noch keine Anwendungsprojekte, Anwendungstests oder Build-/Deploym
 
 1. **Standby/Attract:** Der Watcher zeigt eine großformatige Endlosszene; das Handheld zeigt einen eindeutigen Startbereich. Nach Inaktivität startet die Szene erneut.
 2. **Start und Onboarding:** `F2 LASER` oder `F3 SCHEIBE` bestimmt vor dem Start verbindlich den Rundenmodus; genau einer der beiden Modi ist aktiv. `F1 START` reserviert die aktive Rolle und startet die gewaehlte Runde. Die ersten zwei Ziele demonstrieren je nach Modus Tap-Laser oder Swipe-Schleifen mit verlangsamter Bewegung und klarer Geste.
-3. **Hauptphase:** Stumpfe Werkzeuge erscheinen in definierten Bahnen, Winkeln und Geschwindigkeiten. Schwierigkeit steigt über Spawnrate, Geschwindigkeit, Mischungen und kürzere Reaktionsfenster, nicht über versteckte Regeln.
-4. **Feedback:** Jede abgeschlossene erfolgreiche oder nicht erfolgreiche Spielaktion erhält sichtbares Feedback und eine Audioantwort gemäß Kap. 3.4. Falsches Schärfen und Laser-Treffer auf den Schaft kosten Punkte; die Runde läuft unabhängig vom Punktestand weiter. Es gibt weder Leben noch ein vorzeitiges Game-over.
+3. **Hauptphase:** Stumpfe Werkzeuge erscheinen in definierten Bahnen, Winkeln und Geschwindigkeiten innerhalb der freien Zielfläche `stageArea` (Kap. 3.5). Schwierigkeit steigt über Spawnrate, Geschwindigkeit, Mischungen und kürzere Reaktionsfenster, nicht über versteckte Regeln.
+4. **Feedback:** Jede abgeschlossene erfolgreiche oder nicht erfolgreiche Spielaktion erhält sichtbares Feedback und eine Audioantwort gemäß Kap. 3.4. Falsches Schärfen und Laser-Treffer auf den Schaft kosten Punkte; die Runde läuft unabhängig vom Punktestand weiter. Es gibt weder Leben noch ein vorzeitiges Game-over. Ein falsch bearbeitetes Werkzeug wechselt sichtbar in den Zustand `failed` (zerstört), ist danach nicht mehr auswertbar und verschwindet beschleunigt (Kap. 3.3.1, [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.5).
 5. **Ende:** Der Server beendet nach standardmäßig $60\text{ s}$ die Wertung, beide Ansichten zeigen Ergebnis und die Rangliste des gespielten Modus. Dauer und Punktewerte sind konfigurierbar. Das Formular erfasst Name und E-Mail für Leads und die Preisbenachrichtigung nach der Messe. Wer keine Kontaktdaten angeben möchte, trägt einen Fantasienamen ohne E-Mail ein und kann seinen Highscore trotzdem speichern. Ohne erreichbare E-Mail-Adresse gibt es keinen Preis; die Teilnahme am Spiel und die Ranglistenanzeige bleiben möglich. `Ohne Eintrag weiter` verwirft das Formular. Der konfigurierbare Datenschutzhinweis erläutert die Zwecke vor dem Speichern (Kap. 3.8).
 6. **Rückkehr:** Nach konfigurierbaren $10$ bis $20\text{ s}$ ohne Eingabe oder nach Abschluss der Namenseingabe wird die Rolle freigegeben und der Attract-Mode geladen.
 
@@ -110,37 +112,60 @@ Es existieren noch keine Anwendungsprojekte, Anwendungstests oder Build-/Deploym
 
 Eine Spielaktion ist genau eine im Canvas begonnene und abgeschlossene Tap-/Swipe-Geste, nicht jeder Pointer-Move. Pro Geste wird höchstens ein Werkzeug ausgewertet: zuerst die früheste getroffene Zone entlang des Pfads, bei Gleichstand die vorderste sichtbare Zone. Der falsche Gestentyp auf einem Werkzeug zählt als `wrong_sharpening`; im Laser-Modus hat ein erkannter Schaftkontakt Vorrang. Eine Geste ohne Werkzeugkontakt zählt als `miss`. Bereits vollständig geschärfte Werkzeuge werden aus den Trefferzonen entfernt. Abgebrochene Pointer-Gesten, gesperrte Bedienelemente und Eingaben nach Rundenende sind keine neuen wertungsrelevanten Aktionen. Ein Rundentimer wird durch Overlays nicht angehalten.
 
+### 3.3.1 Verbindliche Entscheidung je Geste: Erfolg, Misserfolg, Sound und Effekt
+
+Diese Regeln sind die einzige Autorität für die Zuordnung „Erfolg“ oder „Misserfolg“. Client und Server werten dieselben normalisierten Trefferzonen und Toleranzen aus der versionierten Konfiguration aus; der Client nutzt sie nur für die lokale visuelle Vorhersage, der Server für die verbindliche Wertung. Hörbar und wertungsrelevant wird ein Ereignis ausschließlich über das bestätigte `ActionResolved` (Kap. 3.4.3).
+
+**Begriffe:** Ein *Werkzeugkontakt* liegt vor, wenn der Tap-Punkt oder der Swipe-Pfad die Werkzeugsilhouette innerhalb der Toleranz `contactToleranceNormalized` schneidet. Die *bearbeitbare Schneide* ist die Zone `cut`, der *Schaft* beziehungsweise *Blattkörper* die Zone `shaft`. Beide Zonen sind normalisierte Polygone im Manifest (Kap. 3.4.5).
+
+| Modus | Ausgeführte Geste | Ausgewerteter Kontakt | Ergebnis `Outcome` | Punkte | Audiopool (Kap. 3.4.1) | Sichtbarer Effekt |
+|-|-|-|-|-:|-|-|
+| LASER | Tap | Tap-Punkt in Zone `cut` | `success` | +10 | `laser_success` | cyanfarbener Fokuspunkt und Lichtimpuls am Kontaktpunkt, grüne HUD-Bestätigung |
+| LASER | Tap | Tap-Punkt in Zone `shaft`; an der gemeinsamen Grenze hat `shaft` Vorrang | `shaft_hit` | -10 | `laser_fail` | kurzer roter Impuls am Schaft, Schaftblitz, rotes HUD-Kreuz |
+| LASER | Swipe | Pfad berührt das Werkzeug innerhalb der Toleranz | `wrong_sharpening` | -5 | `laser_fail` | roter Wischimpuls am Werkzeug, rotes HUD-Kreuz |
+| LASER | Tap oder Swipe | kein Werkzeugkontakt innerhalb der Toleranz | `miss` | -5 | `laser_fail` | kurzer roter Ring am Gestenpunkt, kein Werkzeugeffekt |
+| SCHEIBE | Swipe | Pfad kreuzt Zone `cut` **und** Richtung innerhalb `maxAngleDeviationDeg` **und** Pfadlänge ≥ `minStrokeLengthNormalized` | `success` | +10 | `saw_success` | Schleifscheibe läuft an, gerichtete Funken entlang der Schneide, grüne HUD-Bestätigung |
+| SCHEIBE | Swipe | Pfad kreuzt Zone `cut`, aber Richtung außerhalb der Toleranz oder Strecke zu kurz | `wrong_sharpening` | -5 | `saw_fail` | kurzer Funkenabriss an der Schneide, rotes HUD-Kreuz |
+| SCHEIBE | Tap | Werkzeugkontakt innerhalb der Toleranz | `wrong_sharpening` | -5 | `saw_fail` | roter Stempel am Werkzeug, rotes HUD-Kreuz |
+| SCHEIBE | Swipe | Pfad berührt nur Zone `shaft`/Blattkörper | `wrong_sharpening` | -5 | `saw_fail` | roter Wischimpuls am Blattkörper, rotes HUD-Kreuz |
+| SCHEIBE | Tap oder Swipe | kein Werkzeugkontakt innerhalb der Toleranz | `miss` | -5 | `saw_fail` | kurzer roter Ring am Gestenpunkt, kein Werkzeugeffekt |
+
+**Auswertungsregeln (verbindlich):**
+- Pro Geste wird höchstens ein Werkzeug ausgewertet: die früheste entlang des Pfads getroffene Trefferzone, bei Gleichstand die vorderste sichtbare Zone.
+- Bei gemeinsamer Grenze der Zonen `cut` und `shaft` hat `shaft` Vorrang; es gibt genau ein Ergebnis pro Geste.
+- Ein falscher Gestentyp auf einem Werkzeug zählt als `wrong_sharpening`. Ein erkannter Schaftkontakt hat im Laser-Modus Vorrang vor `wrong_sharpening`, wenn eine Geste beide Bedingungen erfüllen würde.
+- Eine Geste ohne Werkzeugkontakt zählt als `miss`. Ein unbearbeitet vorbeiziehendes Werkzeug löst weder Ergebnis noch Sound aus.
+- Bereits vollständig geschärfte Werkzeuge werden aus den Trefferzonen entfernt und sind bis zum Despawn nicht erneut auswertbar.
+- Abgebrochene Pointer-Gesten, Eingaben auf gesperrten Bedienelementen und Eingaben nach Rundenende sind keine wertungsrelevanten Aktionen.
+- Ein Werkzeug wechselt genau einmal den Zustand: von `dull` zu `sharp` bei bestätigtem `success` oder zu `failed` bei bestätigtem `wrong_sharpening` oder `shaft_hit`. `miss` verändert den Zustand nicht.
+- `sharp` und `failed` sind bis zum Despawn nicht erneut auswertbar: Ein Kontakt löst kein Ergebnis, keine Punkte und keinen Sound aus. `failed`-Werkzeuge verschwinden beschleunigt (`failedDespawnMs`, Startwert 600 ms nach dem auslösenden Ereignis).
+
+**Konkrete Startwerte der Zonen- und Gestentoleranz (konfigurierbar, validiert):** `contactToleranceNormalized: 0.02`, `maxAngleDeviationDeg: 35`, `minStrokeLengthNormalized: 0.18`. Die Streckentoleranz bezieht sich auf die längste Kante der Werkzeug-Bounding-Box, die Winkeltoleranz auf die im Manifest hinterlegte Schneidenrichtung `cutDirectionDeg`. Unzulässige Werte aktivieren keine neue Konfiguration.
+
+**Sichtbarer Erfolg und Misserfolg:** `success` löst den modusbezogenen Success-Pool und den kurzen Erfolgsimpuls aus; `wrong_sharpening`, `shaft_hit` und `miss` lösen den modusbezogenen Fail-Pool und den kurzen Fehlerimpuls aus. Ablauf, Kanalgrenzen und Ducking stehen in Kap. 3.4.3, die Zuordnung der Zonen zu den konkreten Dateien in Kap. 3.4.1.
+
 ## 3.4 Grafik-, Asset- und Soundkonzept
 
-Die visuelle Richtung verbindet die historische gelbe Vollmer-Arbeitsfläche, das anthrazitfarbene Gehäuse und die grünen/blauen Retro-Bedienelemente mit einer comicartigen Produktionswelt. Der Wiedererkennungswert und die liebevolle Überzeichnung sind ausdrücklich erwünscht. Werkzeuge benötigen klar lesbare Silhouetten und die Zustände `dull`, `in_progress` und `sharp`; fotorealistische Details sind nur dort sinnvoll, wo sie die Form nicht verschleiern.
+Die visuelle Richtung verbindet den orangefarbenen Showroom-Boden und die feste Showroom-Kulisse (Kap. 3.5) mit der historischen gelben Arbeitsfläche als Shell-Akzent, dem anthrazitfarbenen Gehäuse und den grünen/blauen Retro-Bedienelementen zu einer comicartigen Produktionswelt. Der Wiedererkennungswert und die liebevolle Überzeichnung sind ausdrücklich erwünscht. Werkzeuge benötigen klar lesbare Silhouetten; die Zustände `dull`, `in_progress` und `sharp` werden als Overlay über die Trefferzone `cut` gezeichnet und nicht als eigene Bilddatei geliefert (Kap. 3.4.5). Fotorealistische Details sind nur dort sinnvoll, wo sie die Form nicht verschleiern.
 
-**Farbe und Schrift:** Das bereitgestellte VWC-Design-System ist verbindliche Leitplanke für Bedienhülle, HUD und Overlays, keine Beschränkung für Spielwelt, Werkzeuge, Effekte oder Humor. Orange ist der wiederkehrende Markenakzent: `vwc.base.color.orange.600` (`#ff8f00`) für Start, Fokus, Fortschritt und bestätigte Hauptaktionen; `orange.400` (`#e87900`) für aktive/gedrückte Zustände; `orange.800` (`#ffe9cc`) für zurückhaltende Hervorhebung. Anthrazit nutzt `grey.100` (`#3b3b3b`) und `grey.200` (`#505050`), die historische Arbeitsfläche `yellow.600` (`#ffed00`). Cyan `blue.600` (`#00bbfc`) bleibt dem Laser vorbehalten; Grün `green.600` (`#94e200`) kennzeichnet korrektes Spiel-Feedback und Rot `red.600` (`#fe0e26`) Fehler oder Abzug. Damit bleibt die Hülle wiedererkennbar, während Assets, Parallaxe und Effekte ihre eigene comicartige Farbdramaturgie verwenden dürfen; Orange ist kein pauschaler Ersatz für das bestehende Gelb.
+**Farbe und Schrift:** Das bereitgestellte VWC-Design-System ist verbindliche Leitplanke für Bedienhülle, HUD und Overlays, keine Beschränkung für Spielwelt, Werkzeuge, Effekte oder Humor. Orange ist der wiederkehrende Markenakzent: `vwc.base.color.orange.600` (`#ff8f00`) für Start, Fokus, Fortschritt und bestätigte Hauptaktionen; `orange.400` (`#e87900`) für aktive/gedrückte Zustände; `orange.800` (`#ffe9cc`) für zurückhaltende Hervorhebung. Anthrazit nutzt `grey.100` (`#3b3b3b`) und `grey.200` (`#505050`), die historische Arbeitsfläche `yellow.600` (`#ffed00`) bleibt als Shell- und Weltakzent erhalten. Die Spielbühne selbst ist jetzt der Showroom aus Kap. 3.5: ein orangefarbener Boden als Weltfarbe, kein Bedienflächen-Token. Cyan `blue.600` (`#00bbfc`) bleibt dem Laser vorbehalten; Grün `green.600` (`#94e200`) kennzeichnet korrektes Spiel-Feedback und Rot `red.600` (`#fe0e26`) Fehler oder Abzug. Damit bleibt die Hülle wiedererkennbar, während Assets, Parallaxe und Effekte ihre eigene comicartige Farbdramaturgie verwenden dürfen; Orange ist kein pauschaler Ersatz für das bestehende Gelb. Der Bodenorangewert der Bühne liegt bewusst unter Sättigung und Helligkeit von `orange.600` (Konfigurationswert, kein neuer Design-Token), damit Zielsilhouetten mit dunkler Kontur sowie Cyan-, Grün- und Rot-Feedback darauf lesbar bleiben.
 
 | Bereich | Design-Token | Einsatzregel |
 |-|-|-|
 | Primäre Bedienaktion und Fokus | `orange.600`, `orange.400` | Start, ausgewählter Modus, Tastatur-/Touchfokus und bestätigte Hauptaktion; nie als Laser- oder Fehlerfarbe verwenden. |
 | Retro-Gehäuse und neutrale Fläche | `grey.100`, `grey.200`, `grey.700` | Gehäuse, Ränder, Trennlinien und deaktivierte Bedienelemente. |
-| Arbeitsfläche und Spielwelt | `yellow.600`; freie Produktionspalette | Gelb trägt die historische Arbeitsfläche. Die Spielwelt darf zusätzliche, kontraststarke Farben nutzen, solange Ziele und Gesten lesbar bleiben. |
+| Arbeitsfläche und Spielwelt | Showroom-Bühnenorange (abgesenkter Konfigurationswert); `yellow.600`; freie Produktionspalette | Die Spielbühne ist die Showroom-Kulisse aus Kap. 3.5/3.6 mit orangefarbenem Boden; `yellow.600` bleibt Shell- und Weltakzent (Lichtband, Maschinenmarkierung, HUD-Binnenfläche) und ist nicht mehr die Grundfarbe des Canvas. Die Spielwelt darf zusätzliche, kontraststarke Farben nutzen, solange Ziele und Gesten lesbar bleiben. |
 | Fachliches Feedback | `blue.600`, `green.600`, `red.600` | Laser, Erfolg und Fehler bleiben semantisch eindeutig und konkurrieren nicht mit dem orangefarbenen Markenakzent. |
 
 Für HUD, Bedienhülle und Formulare wird `Source Sans Pro` aus dem Design-System bevorzugt lokal gebündelt eingesetzt. Eine eigenständige, frei verwendbare Akzentschrift für Attract-Mode oder Werkstückkomik ist zulässig, sofern sie Lesbarkeit und die Bedienhülle nicht verdrängt. Keine kostenpflichtige Corporate-Schrift und kein fremdes restriktiv lizenziertes Gestaltungspaket werden vorausgesetzt. Erforderliche Lizenzhinweise bleiben im Paket; eine zusätzliche Designfreigabe ist nicht vorgesehen.
 
 Das HUD bleibt am Handheld kompakt: oben Zeit und Punkte, darunter Combo und Modusindikator. Der Watcher nutzt dieselben Ereignisse, zeigt aber großformatige Werkzeugbewegungen, den aktuellen Spielerstatus, Punkte, Combo und optional die Tagesrangliste. Der Watcher enthält keine Eingabecontrols.
 
-Empfohlene Laufzeitstruktur: `Assets/images`, `Assets/animations`, `Assets/audio`, `Assets/fonts`, `Assets/templates` und `Assets/config`. Jedes Asset besitzt eine monotone, pro Kategorie eindeutige Manifest-ID, etwa `tool_0001` oder `sfx_0001`; eine entfernte ID bleibt reserviert. Audiodateinamen beschreiben die Aktion nach dem Schema `<aktion>_<nummer>.<format>`, beispielsweise `laser_success_01.mp3`. [fx/audio](../../fx/audio) bleibt die Eingangsablage. Die vorhandenen `yell`-Originaldateien bleiben während der Konzeptarbeit unverändert; die geplante Übernahme unter sprechenden Liefer-/Laufzeitnamen steht in Kap. 3.4.1. Die Runtime verwendet die Manifestzuordnung, nicht eine aus Dateinamen abgeleitete Spiellogik. Weitere Varianten benötigen keinen Codeumbau.
+Empfohlene Laufzeitstruktur: `Assets/images`, `Assets/animations`, `Assets/audio`, `Assets/fonts`, `Assets/templates` und `Assets/config`; die vollständige Ablage- und Solution-Struktur steht in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.3. Jedes Asset besitzt eine monotone, pro Kategorie eindeutige Manifest-ID, etwa `tool_0001` oder `sfx_0001`; eine entfernte ID bleibt reserviert. Audiodateinamen beschreiben die Aktion nach dem Schema `<aktion>_<nummer>.<format>`, beispielsweise `laser_success_01.mp3`. [fx/audio](../../fx/audio) bleibt die Eingangsablage. Die vorhandenen `yell`-Originaldateien bleiben während der Konzeptarbeit unverändert; die geplante Übernahme unter sprechenden Liefer-/Laufzeitnamen steht in Kap. 3.4.1. Die Runtime verwendet die Manifestzuordnung, nicht eine aus Dateinamen abgeleitete Spiellogik. Weitere Varianten benötigen keinen Codeumbau.
 
-Die fachliche Bedeutung liegt ausschließlich im versionierten Manifest, beispielsweise `tool_0001` mit `toolType: "drill"`, `interaction: "tap"`, Schneiden-/Schaftpolygonen, `states: ["dull", "sharp"]` und Audiogruppen. Eine Assetvorlage pro Kategorie dokumentiert Pflichtfelder, Formate, Pivot, Auflösung, Varianten, Performancegrenzen und Fallbacks. Ein Manifest-Validator prüft vor jeder Runde IDs, referenzierte Dateien und Vorlagenkonformität; bei Fehlern bleibt das letzte gültige Manifest aktiv. Fehlt auch dieses, startet nur ein ausdrücklich gekennzeichneter Demo-Modus. PNG/WebP eignet sich für Rastergrafiken, JSON-Atlanten für Sprites. Die gelieferten MP3s werden direkt unterstützt und vor Spielbeginn dekodiert; OGG bleibt optional, WAV eignet sich für kurze Feedbacksignale. Kein CDN und kein Streaming sind erforderlich.
+Die fachliche Bedeutung liegt ausschließlich im versionierten Manifest, beispielsweise `tool_0001` mit `toolType: "drill"`, `interaction: "tap"`, `sizeClass: "small"`, den normalisierten Trefferzonen `hitZones` (Rollen `cut`/`shaft`), `pivot` und Audiogruppen; die verbindliche Vorlage steht in Kap. 3.4.5. Das Manifest wird **generiert** und nicht von Hand gepflegt; Aufbau, Beispiel, Autorendateien und Werkzeugkette stehen in [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md). Eine Assetvorlage pro Kategorie dokumentiert Pflichtfelder, Formate, Pivot, Auflösung, Varianten, Performancegrenzen und Fallbacks. Ein Manifest-Validator prüft vor jeder Runde IDs, referenzierte Dateien und Vorlagenkonformität; bei Fehlern bleibt das letzte gültige Manifest aktiv. Fehlt auch dieses, startet nur ein ausdrücklich gekennzeichneter Demo-Modus. PNG/WebP eignet sich für Rastergrafiken, JSON-Atlanten für Sprites. Die gelieferten MP3s werden direkt unterstützt und vor Spielbeginn dekodiert; OGG bleibt optional, WAV eignet sich für kurze Feedbacksignale. Kein CDN und kein Streaming sind erforderlich.
 
-| Dateiname | Zweck und Anzeigeort | Format und technische Anforderungen | Austauschbar über Konfiguration | Erwartete Varianten |
-|-|-|-|-|-|
-| `images/tools/tool_0001.png` | Werkzeugbild in Handheld und Watcher | PNG/WebP mit Transparenz, Quelle mindestens 1024 px längste Kante, Vorlage `tool-image` | ja | `dull`, `sharp`, Werkzeugtyp |
-| `animations/laser/fx_0001.json` | Laserblitz | Phaser-kompatibler Partikel-/Sprite-Atlas, Vorlage `laser-effect` | ja | Intensität, Farbe, Dauer |
-| `animations/grind/fx_0001.json` | Schleiffunken | Atlas/JSON mit begrenzter Partikelzahl, Vorlage `grind-effect` | ja | Richtung, Dichte, Material |
-| `images/ui/attract_0001.webm` | Attract-Hintergrund am Watcher | lokales WebM, stumm oder mit separatem Audio, Vorlage `watcher-video` | ja | Hochformat, Querformat |
-| `audio/laser/laser_success_01.mp3` | erfolgreiche Laseraktion | MP3, bereits hochgepitcht, Vorlage `laser-sfx` | ja | Pools `laser_success` und `laser_fail`, jeweils 3–6 angestrebt |
-| `audio/grind/saw_success_01.mp3` | erfolgreiche Sägeaktion | MP3, bereits tiefer gepitcht, Vorlage `grind-sfx` | ja | Pools `saw_success` und `saw_fail`, jeweils 3–6 angestrebt |
-| `audio/music/arcade_music_01.mp3` | 90er-Arcade-Hintergrundmusik | MP3, Loopbereich im Manifest, Vorlage `music-loop` | ja | ein Startstück genügt, Musik ist kein Aktionspool |
-| `audio/ui/round_end_01.mp3` | Rundenende | MP3, kurzer Jingle, Vorlage `ui-sfx` | ja | Pools `round_start` und `round_end`, jeweils 3–6 angestrebt |
+**Dateiübersicht:** Die Bilddateien mit Format, Auflösung, Vorlage und Varianten stehen vollständig in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4; die Audiodateien stehen in Kap. 3.4.4 dieses Dokuments. Eine dritte, eigene Übersicht wird bewusst nicht geführt: Jede Angabe existiert an genau einer Stelle.
 
 Audio ist in `Assets/audio/{ui,laser,grind,ambient,music}` organisiert. Ein Audioprofil legt getrennte Lautstärken für Musik, kurze Feedbacksignale und Werkstückstimmen fest. Die folgende Zuordnung ist die konkrete Liefer- und Implementierungsvorgabe; sie ist noch keine vorhandene Laufzeitimplementierung. Audio darf eine sichtbare Aktion nie blockieren. Herkunft und Nutzungsrechte werden schlank im Manifest dokumentiert, ohne zusätzlichen kreativen Freigabeprozess.
 
@@ -150,10 +175,10 @@ Audio ist in `Assets/audio/{ui,laser,grind,ambient,music}` organisiert. Ein Audi
 
 | Modus / Audiopool | Exakte Bedingung | Punkte (Startwert) | Konkrete Startdateien, gleiche Gewichtung | Klang / Status |
 |-|-|-|-|-|
-| LASER / `laser_success` | Tap trifft bearbeitbare Schneide von Bohrer oder Fräser, mit oder ohne PKD | +10 | `laser_success_01.mp3`, `laser_success_02.mp3`, `laser_success_03.mp3`, `laser_success_04.mp3`, `laser_success_05.mp3` | hochgepitchter Jubel; fünf Bestandsclips übernehmen |
-| LASER / `laser_fail` | Falsche Geste, Werkzeugkörper, Schafttreffer oder Geste ohne Werkzeugkontakt | -5; Schaft -10 | `laser_fail_01.mp3`, `laser_fail_02.mp3`, `laser_fail_03.mp3`, `laser_fail_04.mp3`, `laser_fail_05.mp3` | hochgepitchter Protest; fünf Bestandsclips übernehmen |
-| SCHEIBE / `saw_success` | Gültiger Swipe entlang der Sägezahnschneide | +10 | `saw_success_01.mp3`, `saw_success_02.mp3`, `saw_success_03.mp3` | tiefer gepitchter zufriedener Ausruf; zu liefern |
-| SCHEIBE / `saw_fail` | Falsche Richtung, zu kurzer Swipe, Tap, Blattkörper oder Geste ohne Werkzeugkontakt | -5 | `saw_fail_01.mp3`, `saw_fail_02.mp3`, `saw_fail_03.mp3` | tiefer gepitchter Protest; zu liefern |
+| LASER / `laser_success` | `success`: Tap-Punkt in Zone `cut` von Bohrer oder Fräser, mit oder ohne PKD | +10 | `laser_success_01.mp3`, `laser_success_02.mp3`, `laser_success_03.mp3`, `laser_success_04.mp3`, `laser_success_05.mp3` | hochgepitchter Jubel; fünf Bestandsclips übernehmen |
+| LASER / `laser_fail` | `wrong_sharpening`, `shaft_hit` oder `miss` (falsche Geste, Werkzeugkörper, Schafttreffer oder Geste ohne Werkzeugkontakt) | -5; `shaft_hit` -10 | `laser_fail_01.mp3`, `laser_fail_02.mp3`, `laser_fail_03.mp3`, `laser_fail_04.mp3`, `laser_fail_05.mp3` | hochgepitchter Protest; fünf Bestandsclips übernehmen |
+| SCHEIBE / `saw_success` | `success`: Swipe kreuzt Zone `cut` mit zulässiger Richtung und Mindeststrecke | +10 | `saw_success_01.mp3`, `saw_success_02.mp3`, `saw_success_03.mp3` | tiefer gepitchter zufriedener Ausruf; zu liefern |
+| SCHEIBE / `saw_fail` | `wrong_sharpening` oder `miss` (falsche Richtung, zu kurzer Swipe, Tap, Blattkörper oder Geste ohne Werkzeugkontakt) | -5 | `saw_fail_01.mp3`, `saw_fail_02.mp3`, `saw_fail_03.mp3` | tiefer gepitchter Protest; zu liefern |
 
 **Poolgröße:** Pro Aktion sind 3–6 Dateien das Produktionsziel, keine technische Mindest-/Höchstgrenze. Alle tatsächlich konfigurierten Varianten nehmen an der Zufallsauswahl teil; auch ein oder mehr als sechs Clips funktionieren ohne Codeänderung. Die Startliste verwendet fünf Varianten je Laserpool und drei je weiterem Aktionspool. Weitere Dateien folgen dem gleichen Namen mit `_04`, `_05`, `_06` usw. Fehlbearbeitung, Schaft und Fehlschlag bleiben für Punkte und Bildfeedback unterscheidbar, teilen aber den jeweiligen `fail`-Soundpool.
 
@@ -209,28 +234,254 @@ Die Anzahl ist der konkrete Startvorschlag; 3–6 Varianten pro Aktion sind gew�
 
 Der Startvorschlag umfasst **32 Laufzeitdateien**: zehn Laserclips aus dem Bestand und **22 neu zu liefernde oder zu produzierende Dateien**. Weitere Varianten sind willkommen, aber keine technische Voraussetzung. Keine separaten Schaft-/Fehlschlagpools, Ambientloops oder Gag-Sounds nötig. Die Hörzuordnung des Laserbestands wird bei der Übernahme geprüft; diese Konzeptänderung benennt die Originaldateien noch nicht um.
 
-Ein Anschauungspaket liegt unter [demo-material](../demo-material/README.md). Es dient ausschließlich der Abstimmung. **Seine technische und gestalterische Qualität ist ausdrücklich kein Maßstab für die Produktionsqualität des Games.** Seine früheren Beispieldateinamen sind keine zusätzliche Audiolieferliste; dafür gilt Kap. 3.4.4. Das Release benötigt ein validiertes Manifest, nutzbare Medienrechte und funktionierende Qualitäts-/Performanceprofile auf der Finalhardware, keinen separaten kreativen Freigabeprozess.
+Ein Anschauungspaket liegt unter [demo-material](../demo-material/README.md). Es dient ausschließlich der Abstimmung. **Seine technische und gestalterische Qualität ist ausdrücklich kein Maßstab für die Produktionsqualität des Games.** Seine früheren Beispieldateinamen sind keine zusätzliche Audiolieferliste; dafür gilt Kap. 3.4.4. Sein Beispielschema ist nicht bindend: Die Werkzeugbild- und Zonenstruktur folgt ausschließlich Kap. 3.4.5, die Zustandsdarstellung `stateOverlays` plus `tool-overlay`. Das Release benötigt ein validiertes Manifest, nutzbare Medienrechte und funktionierende Qualitäts-/Performanceprofile auf der Finalhardware, keinen separaten kreativen Freigabeprozess.
+
+### 3.4.5 Werkzeugbild- und Trefferzonen-Regeln (`tool-image`)
+
+Dieser Abschnitt regelt die Spielbarkeit der Werkzeugbilder (Bohrer, PKD-Fräser, Sägeblätter): Zonen, Größen und Zustände. Die Produktionsvorlage (Format, Leinwand, Ausrichtung, Lesbarkeit, Konsistenz), die Lieferliste mit zwölf Werkzeugen und die Sichtprüf-Checkliste stehen in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.1 und 3.7.1. Ein Asset ohne gültige Zonen gilt als vorlagenwidrig und blockiert die Manifestaktivierung. Warum Erfolg oder Misserfolg eintritt, regelt Kap. 3.3.1; die Zonen liefern dafür nur die Geometrie.
+
+**Größenvarianten:** Die relative Werkzeuggröße wird über die Bildausnutzung statt über eigene Bildvorlagen gesteuert: `small` ≈ 45 %, `medium` ≈ 62 %, `large` ≈ 80 % der Leinwandkante (Werkzeug-Bounding-Box). Server-, Trefferzonen- und Effektgrößen skalieren gemeinsam mit dem Bild; dieselbe Bilddatei bedient mehrere Skalierungen.
+
+**Trefferzonen (Pflicht):** Jedes Werkzeug besitzt im Manifest genau zwei Zonen:
+
+| Zone | Rolle | Bedeutung | Wirkung im Laser-Modus | Wirkung im Schleif-Modus |
+|-|-|-|-|-|
+| `cut` | Bearbeitbare Schneide | Schneiden des Bohrers/Fräsers beziehungsweise markierte Sägezahnkante | `success` bei Tap | `success` bei gültigem Swipe |
+| `shaft` | Schaft / Blattkörper | alles übrige opake Material des Werkzeugs | `shaft_hit` bei Tap | `wrong_sharpening` bei Tap oder Swipe |
+
+- Zonen sind geschlossene Polygone in normalisierten Koordinaten `0.0` bis `1.0` relativ zur Werkzeug-Bounding-Box (Ursprung links oben); sie skalieren damit verlustfrei mit jeder Bildgröße.
+- Die Zonen müssen die gesamte opake Silhouette lückenlos überdecken; eine Lücke ist ein Validierungsfehler. Bei Überlappung an der gemeinsamen Grenze hat `shaft` Vorrang.
+- `cut` muss zusammenhängend sein und die tatsächlich bearbeitbare Kante abbilden, nicht den gesamten Werkzeugkopf. Eine leere oder flächenmäßig zu kleine `cut`-Zone ist ungültig.
+- Für den Schleif-Modus nennt das Manifest zusätzlich `cutDirectionDeg` (Schneidenrichtung) und optional `minStrokeLengthNormalized`; die sichtbare Richtungsmarkierung ist ein Laufzeit-Overlay und kein Bestandteil des Bildes.
+- Zonen werden nicht aus Dateinamen abgeleitet, sondern ausschließlich im Manifest gepflegt.
+
+**Zustandsdarstellung:** Das Bild liefert nur die Form und ist zustandsneutral. `stateOverlays` nennt nur, welche logischen Zustände (`dull`, `in_progress`, `sharp`, `failed`) ein Werkzeug unterstützt, nie eigene Bilddateien. Die Darstellung je Zustand liefert die `tool-overlay`-Kategorie (Kap. 3.5) mit `anchor: "cut-zone"`, gezeichnet über die `cut`-Zone; die konkrete Overlay-Liste und das Zustandsmodell stehen in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.2 und 3.5. `in_progress` ist eine kurze Übergangsdarstellung (≤ 600 ms) und keine eigene Spielanforderung.
+
+**Effekte:** Laser- und Schleifeffekte verwenden die geteilten Atlanten `laser-effect` und `grind-effect`. Erfolg und Misserfolg unterscheiden sich ausschließlich über Tint (`green.600`/`red.600`) und Intensität, nicht über getrennte Effektatlanten.
+
+**Konkreter Werkzeug-Startkatalog:** Die Startliste der Werkzeuge mit ID, Werkzeugtyp, Größenklasse, PKD-Anteil und Zonenbeschreibung steht in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.1. Der Katalog lässt sich dort ohne Kernlogikänderung erweitern; weitere Größen und PKD-Varianten sind zusätzliche Manifest-Einträge.
+
+### 3.4.6 Bildproduktion mit Leonardo AI
+
+Der Werkzeugbildsatz wird mit Leonardo AI erzeugt und anschließend normiert. Da Leonardo AI in der Regel ein flaches Rasterbild ohne echte Transparenz liefert, ist der Ablauf fest vorgegeben; die Bildqualität aus dem Generator ist Ausgangsmaterial, keine Freigabe. **Anzahl, IDs, Varianten und Zustandsbilder sind nicht Teil dieses Abschnitts**, sondern stehen in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.
+
+**Ablauf pro Werkzeug:**
+
+1. **Basisbild erzeugen:** Freistellen über eine uniforme, im Werkzeug nicht vorkommende Hintergrundfarbe (empfohlen Magenta `#FF00FF`), Format quadratisch (1:1), höchste verfügbare Auflösung; Stil- und Modellparameter einmal festlegen.
+2. **Hintergrund entfernen:** Chroma-Key auf die gewählte Hintergrundfarbe anwenden und als transparentes PNG exportieren; Kanten mit 1 px weicher Alpha-Kante nacharbeiten. Bietet das gewählte Leonardo-AI-Paket eine Transparenz-/Freistellfunktion, kann sie den Chroma-Key ersetzen; die Normierung bleibt identisch.
+3. **Normieren:** Auf die Werkzeug-Bounding-Box zuschneiden, 8 bis 10 % transparente Randreserve ergänzen, auf 1024 px längste Kante skalieren.
+4. **Zonen setzen:** `cut` und `shaft` als normalisierte Polygone über das fertige Bild legen (Zonen-Editor aus [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md)) und als `<assetId>.zones.json` speichern.
+5. **Manifest erzeugen:** Metadaten über `vgtools manifest seed`/`new asset` anlegen und das Manifest über `vgtools manifest build` generieren und validieren; kein Eintrag wird von Hand geschrieben.
+
+**Prompt-Vorlage (englisch, damit der Generator stabil arbeitet):**
+
+```text
+flat comic vector illustration of a single industrial {tool_type}, {size_hint}, {pkd_hint},
+orthographic side view, centered, bold clean outline, cel-shaded, playful retro arcade style,
+consistent soft top-left lighting, solid uniform {chroma_color} background, full tool visible with margin,
+no text, no watermark, no logos, no hands, no shadow on background, only one object
+```
+
+| Prompt-Platzhalter | Werte | Hinweis |
+|-|-|-|
+| `{tool_type}` | `twist drill bit`, `PKD-tipped milling cutter`, `circular saw blade` | genau ein Werkzeugbegriff pro Bild |
+| `{size_hint}` | `small`, `medium`, `large` | die Größe im Spiel steuert die Bildausnutzung, nicht der Prompt |
+| `{pkd_hint}` | `polycrystalline diamond cutting edges, faceted metallic sparkle` oder leer | nur für PKD-Varianten |
+| `{chroma_color}` | `magenta` (bevorzugt) oder `green` | genau eine Farbe, die im Werkzeug nicht vorkommt |
+
+**Negativ-Prompt (verbindlich):** `text, letters, numbers, watermark, logo, signature, multiple tools, collage, background scenery, floor, shadow, human hands, person, realistic photograph, blurry, cluttered details`.
+
+| Parametergruppe | Vorgabe | Zweck |
+|-|-|-|
+| Seitenverhältnis | 1:1 | quadratische Leinwand für die Zonen-Normierung |
+| Auflösung | höchste verfügbare Stufe | Reserve für 2048-px-Master und Skalierung |
+| Modell/Stil | einmal festlegen, für alle Werkzeuge gleich | einheitliche Farbfamilie und Kontur |
+| Seed | pro Werkzeug einmal festhalten | reproduzierbare Nachgeneration und PKD-Varianten |
+| Varianten | 4 Bilder pro Werkzeug, bestes Silhouettenergebnis wählen | die Silhouette ist das wichtigste Kriterium |
+| Image-Guidance | für PKD-Varianten mit niedriger Stärke aus dem Basisbild | gleiche Form, nur Detailänderung |
+
+**Nachbearbeitungs-Checkliste:** Die verbindliche Sichtprüf-Checkliste für alle Bildassets steht in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.7.1 und wird dort geführt; eine zweite Checkliste wird bewusst nicht gepflegt.
+
+**Nutzungsrechte:** Es gilt die geklärte Vorgabe aus OP-03: ausschließlich royaltyfree verwendbare oder eigene Inhalte. Der Generator muss die kommerzielle Nutzung der Ausgaben erlauben; der Lizenz-/Herkunftsstatus wird pro Asset im Manifest geführt (`licenseStatus`). Die Dateinamen bleiben reine Kategorie-IDs (`tool_0001.png`); die Bedeutung steht im Manifest.
+
+**Showroom-Bühnenbild (`showroom-stage`):** Das Bühnenbild ist kein Werkzeugbild und folgt einer eigenen Vorgabe. Es wird wie die Werkzeuge mit Leonardo AI erzeugt, aber als 16:9-Kulisse ohne Freistellung; die inhaltlichen Regeln zur Zielfläche stehen in Kap. 3.5.
+
+| Merkmal | Vorgabe |
+|-|-|
+| Format | Master 3840 × 2160 px (16:9), Lieferdatei WebP 2560 × 1440 px; kein Alpha nötig |
+| Bildinhalt | Showroom-Innenraum: Hallenrückseite, orangefarbener Boden, einige fest aufgestellte Maschinen, Deckenlicht |
+| Personen | **keine** Personen im Basisbild; Kollegen sind separate `showroom-cast`-Requisiten und werden nicht eingebrannt |
+| Freie Zielfläche | eine zusammenhängende, detaill- und konturarme Zone `stageArea` im Boden-/Mittelfeld (Kap. 3.5) |
+| Farbigkeit | Bodenorange unter `orange.600` abgesenkt; keine grellen Grün-, Rot- oder Cyansättigungen im Zielbereich |
+| Kontrast | Zielbereich ohne harte Hell-/Dunkelkanten, ohne Schrift, Zahlen und Logos, die als Ziel missverstanden werden könnten |
+| Stil | gleiche comicartige, cel-shadete Linienführung wie die Werkzeuge; keine Fotorealistik |
+
+**Prompt-Vorlage (englisch):**
+
+```text
+wide comic vector illustration of an empty industrial showroom interior,
+warm orange painted floor, anthracite machines standing along the walls and in the back,
+ceiling light strips, clean uncluttered open floor in the foreground,
+flat cel-shaded retro arcade style, bold clean outlines, soft top-left lighting,
+no people, no text, no watermark, no logos, no tools in the foreground, empty stage area
+```
+
+**Negativ-Prompt (verbindlich):** `people, persons, hands, text, letters, numbers, watermark, logo, signature, tool in foreground, cluttered floor, harsh high-contrast shadows, realistic photograph, blurry`.
+
+| Parametergruppe | Vorgabe | Zweck |
+|-|-|-|
+| Seitenverhältnis | 16:9 | deckt die logische Canvasfläche aus Kap. 3.7 |
+| Auflösung | höchste verfügbare Stufe | Reserve für den 3840-px-Master |
+| Seed | einmal festhalten | reproduzierbare Nachgeneration von Lichtvarianten |
+| Varianten | 4 Bilder, danach Lichtvarianten per Image-Guidance aus dem Basisbild | gleiche Raumgeometrie, nur Lichtstimmung ändert sich |
+| Nachbearbeitung | `stageArea` freistellen/abschwächen: keine Personen, keine Werkzeuge, keine harten Kanten im Zielbereich | die Zielfläche bleibt frei und lesbar |
+
+### 3.4.7 Manifest: Zweck, Aufbau und Beispiel
+
+**Was das Manifest ist:** Das Manifest ist **eine einzige, versionierte JSON-Datei** (geplant: `Assets/config/manifest.json`), die jedes Asset und jede Zuordnung deklarativ beschreibt: welche IDs vergeben sind, welche Datei dahinterliegt, welcher Vorlage/`category` der Eintrag folgt, welche Trefferzonen, Skalierungs- und Spawnprofile gelten, welche Audiopools zugeordnet sind und welcher Lizenzstatus vorliegt. Es ist die **einzige Quelle der Zuordnung**; Dateinamen und Codepfade tragen keine Bedeutung (Kap. 3.4). Im Manifest stehen keine Bildinhalte, Sounds oder Programme, sondern ausschließlich Verweise auf Dateien plus die fachlichen Felder, die die Laufzeit liest. Die Datei wird **generiert** und nicht von Hand geschrieben; wer sie erzeugt, welche kleinen Eingabedateien es gibt und wie die Werkzeugkette arbeitet, steht in [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md).
+
+**Regeln:** Eine ID wird genau einmal vergeben und bleibt nach dem Entfernen reserviert. Jede im Manifest genannte Datei und jede Vorlage muss vorhanden und bekannt sein. Die Validierung läuft vor jeder Runde; bei Fehlern bleibt die letzte gültige Fassung aktiv. Werte wie Trefferzonen, Punkte, Poolgrößen oder die freie Zielfläche ändern sich durch einen neuen Manifesteintrag, nicht durch Codeänderung.
+
+**Beispiel (verkürzt und nicht normativ vollständig):**
+
+```json
+{
+  "manifestVersion": "1.0.0",
+  "configVersion": "2026-09-28",
+  "tools": [
+    {
+      "toolId": "tool_0001",
+      "category": "tool-image",
+      "toolType": "drill",
+      "interaction": "tap",
+      "sizeClass": "small",
+      "pkd": false,
+      "visualAssetId": "tool_0001.png",
+      "pivot": { "x": 0.5, "y": 0.5 },
+      "hitZones": [
+        { "zoneId": "cut", "role": "cut", "points": [[0.30, 0.05], [0.70, 0.10], [0.66, 0.38], [0.34, 0.34]] },
+        { "zoneId": "shaft", "role": "shaft", "points": [[0.34, 0.05], [0.66, 0.10], [0.60, 0.95], [0.40, 0.95]] }
+      ],
+      "stateOverlays": ["dull", "in_progress", "sharp"],
+      "scoreProfileId": "laser_default",
+      "audioPools": { "success": "laser_success", "fail": "laser_fail" },
+      "licenseStatus": "royaltyfree"
+    },
+    {
+      "toolId": "tool_0006",
+      "category": "tool-image",
+      "toolType": "saw_blade",
+      "interaction": "swipe",
+      "sizeClass": "small",
+      "pkd": false,
+      "visualAssetId": "tool_0006.png",
+      "pivot": { "x": 0.5, "y": 0.5 },
+      "hitZones": [
+        { "zoneId": "cut", "role": "cut", "points": [[0.05, 0.42], [0.95, 0.38], [0.95, 0.58], [0.05, 0.55]] },
+        { "zoneId": "shaft", "role": "shaft", "points": [[0.30, 0.05], [0.70, 0.05], [0.75, 0.95], [0.25, 0.95]] }
+      ],
+      "cutDirectionDeg": 90,
+      "minStrokeLengthNormalized": 0.18,
+      "stateOverlays": ["dull", "sharp"],
+      "scoreProfileId": "saw_default",
+      "audioPools": { "success": "saw_success", "fail": "saw_fail" },
+      "licenseStatus": "royaltyfree"
+    }
+  ],
+  "audioPools": [
+    {
+      "poolId": "laser_success",
+      "category": "laser-sfx",
+      "variants": [
+        "laser_success_01.mp3", "laser_success_02.mp3", "laser_success_03.mp3",
+        "laser_success_04.mp3", "laser_success_05.mp3"
+      ],
+      "volumeProfile": "voice",
+      "bagRule": "shuffle_no_repeat",
+      "fallback": "feedback_success"
+    },
+    {
+      "poolId": "laser_fail",
+      "category": "laser-sfx",
+      "variants": [
+        "laser_fail_01.mp3", "laser_fail_02.mp3", "laser_fail_03.mp3",
+        "laser_fail_04.mp3", "laser_fail_05.mp3"
+      ],
+      "volumeProfile": "voice",
+      "bagRule": "shuffle_no_repeat",
+      "fallback": "feedback_fail"
+    }
+  ],
+  "stage": [
+    {
+      "assetId": "bg_0001",
+      "category": "showroom-stage",
+      "file": "images/background/bg_0001.webp",
+      "layer": "backdrop",
+      "parallaxFactor": 0.0,
+      "stageArea": { "x": 0.05, "y": 0.28, "w": 0.90, "h": 0.64 },
+      "palette": { "floor": "vollmer_orange_stage_dark", "wall": "grey_light" },
+      "lightProfile": "showroom_day",
+      "licenseStatus": "royaltyfree"
+    },
+    {
+      "assetId": "cast_0001",
+      "category": "showroom-cast",
+      "file": "images/background/cast_0001.png",
+      "sprite": "colleague_grey_polo",
+      "layer": "props",
+      "motionPath": "walk_back_band_left_to_right",
+      "speedProfile": "walk_slow",
+      "cooldownMs": 25000,
+      "enabled": true
+    }
+  ],
+  "spawnProfiles": [
+    {
+      "spawnProfileId": "stage_default",
+      "maxConcurrentTargets": 6,
+      "maxStageCoverage": 0.45,
+      "minTargetSpacingFactor": 1.25,
+      "entryEdges": ["left", "right"],
+      "difficultyRampId": "ramp_default"
+    }
+  ]
+}
+```
+
+**Wie die Laufzeit das Beispiel liest:** `bg_0001` liefert die Kulisse, `stageArea` begrenzt den Bereich, in dem Ziele erscheinen dürfen, `spawnProfiles.stage_default` begrenzt gleichzeitige Ziele und deren Flächenanteil (Kap. 3.5). `cast_0001` ist eine rein dekorative Requisite ohne Trefferzone. `tool_0001` verweist über `audioPools` auf die beiden Laserpools; ein neuer Clip wird nur als zusätzliche `variant`-Datei plus Manifestzeile aufgenommen. Die verbindlichen Feldnamen stehen in Kap. 4; ein neues Hintergrund- oder Requisitenasset benötigt einen neuen Eintrag und keine Codeänderung. Das Beispiel dokumentiert den erzeugten Aufbau; in der Praxis entsteht die Datei aus den Autorendateien und der Werkzeugkette ([00003](00003-c-vollmer-manifest-und-hilfstools.concept.md)), nicht durch Eintippen.
 
 ## 3.5 Hintergrund, räumliche Tiefe und Humor
 
-**Favorit:** Eine stilisierte, ruhig automatisch scrollende Produktionslandschaft mit drei Parallaxebenen. Das erzeugt die räumliche Spannung bekannter Arcade-Sidescroller, ohne eine hektische Moorhuhn-Kopie oder eine technische Maschinensimulation zu werden. Die Welt bewegt sich horizontal, die Kamera bleibt ruhig; Besucher müssen weder scrollen noch eine Kamera steuern.
+**Favorit:** Das Spielbühnenbild ist eine feste Showroom-Kulisse des Vollmer-Messeraums: orangefarbener Boden, einige fest aufgestellte Maschinen und gelegentlich durchs Bild laufende Kollegen in grauen Vollmer-Polos. Die Kulisse steht still, die Werkzeuge bewegen sich davor; die räumliche Tiefe entsteht – wie bei „Moorhuhn“ – allein aus wenigen Bildebenen. Anders als dort gibt es keine Zieljagd, keine Kamera und kein Scrollen: Besucher müssen nichts bedienen, um die Welt zu sehen.
 
-| Ebene | Parallaxfaktor | Inhalt | Spielregel |
+**Eine Kulisse, alle Ebenen:** Es gibt genau eine Basisdatei `bg_0001` (Kap. 3.4, Vorlage `showroom-stage`). Tiefe entsteht durch deren Bildebenen und durch optionale, bewegte Requisiten (`cast_*`) davor, nicht durch eine zweite Panoramavariante. Der Boden bleibt fest; nur Requisiten und Ziele bewegen sich.
+
+| Ebene | Bewegung im Bild | Inhalt | Spielregel |
 |-|-:|-|-|
-| Hintergrund | $0{,}15$ bis $0{,}25$ | Hallenstruktur, entfernte Maschinen, Lichtbaender und abstrakte Markenflaechen | rein dekorativ, nie Zielverdeckung |
-| Mittelebene | $0{,}55$ bis $0{,}70$ | Werkzeuge, Zufuehrung, Bearbeitungszellen und Qualitaetsstationen | alle Ziele und Trefferzonen |
-| Vordergrund | $1{,}00$ bis $1{,}25$ | Schutzscheibe, Kabeltraeger, Transportkorb, Foerdergut und Spänefilter | zeitlich begrenzte, regelbasierte Teilverdeckung |
+| Kulisse (`bg_0001`) | fest ($0{,}00$) | Showroom-Wand, orangefarbener Boden, feste Maschinen, Deckenlicht | rein dekorativ; die freie Zielfläche `stageArea` bleibt detaillfrei |
+| Requisiten (`cast_*`) | $0{,}10$ bis $0{,}25$ relativ zur Zielebene | gelegentlich laufender Kollege in grauem Polo, leise Maschinenbewegung | hinter der Zielebene gezeichnet, nie Zielverdeckung, nie Trefferzone |
+| Zielebene | $1{,}00$ (Referenz) | Werkzeuge mit Silhouette, Trefferzonen und Zustands-Overlays | alle Ziele und Trefferzonen |
+| Vordergrund | $1{,}10$ bis $1{,}25$ | Schutzscheibe, Kabeltraeger, Transportkorb, Foerdergut und Spänefilter | zeitlich begrenzte, regelbasierte Teilverdeckung |
 | HUD | $0$ | Zeit, Punkte, Combo und Modus | nie von Weltobjekten verdeckt |
 
-Der Hintergrund ist eine **Mischform aus prozeduraler Komposition und konkreten Assets**. Wiederholbare Hallenmodule, Bodenraster, Lichtlaeufe und dezente Partikel entstehen aus konfigurierten Kacheln und Farbwerten; sie eignen sich fuer endloses Scrolling und schnelle Layoutvarianten. Werkzeuge, Schutzvorrichtungen, charakteristische Maschinenmerkmale und verwendete Bildzeichen sind als PNG-Master und WebP-Auslieferungsasset vorgesehen. Laser, Funken, Schleifspuren und kleine Ereignisse verwenden Atlas-/JSON-Animationen mit PNG/WebP-Texturen. Das verhindert sowohl generische prozedurale Werkzeuge als auch eine unflexible, vollstaendig vorgerenderte Panoramawelt.
+**Freie Zielfläche (`stageArea`):** Die Kulisse liefert einen zusammenhängenden, detaillarmen Bereich, in dem Ziele erscheinen dürfen. Startwerte (konfigurierbar): `stageArea` umfasst mindestens $55\,\%$ der Canvasfläche (Beispiel `{ x: 0.05, y: 0.28, w: 0.90, h: 0.64 }`), enthält keine Maschinen-, Möbel- oder Personensilhouette und keine harten Hell-/Dunkelkanten. Ziele treten ausschließlich von den linken und rechten Rändern der `stageArea` ein und bewegen sich in Bahnen quer durch diese Fläche.
 
-Verdeckungen sind bewusstes Gameplay, keine zufaellige Renderfolge: Jedes Ziel ist mindestens $650\text{ ms}$ voll sichtbar, maximal $40\,\%$ seiner Trefferflaeche darf fuer hoechstens $450\text{ ms}$ verdeckt sein, und die relevante Schneiden- beziehungsweise Tap-Zone bleibt sichtbar. In den ersten $15\text{ s}$ der Runde gibt es keine Verdeckung; zwischen zwei verdeckten Zielen liegen mindestens $2\text{ s}$. Eine ausbleibende Aktion auf ein verdecktes Ziel kostet weder Punkte noch Combo. Diese Regeln erhalten den humorvollen "gerade noch erwischt"-Moment, ohne die Messeinteraktion unfair zu machen.
+**Regeln gegen Überladung:** Damit auch mehrere gleichzeitige Ziele ruhig und lesbar bleiben, sind die Startwerte `maxConcurrentTargets: 6`, `maxStageCoverage: 0.45` und `minTargetSpacingFactor: 1.25` verbindlich konfiguriert (Manifest-Beispiel in Kap. 3.4.7). Es gelten: höchstens sechs gleichzeitig aktive Ziele; die Summe ihrer Bounding-Boxen belegt höchstens $45\,\%$ der `stageArea`; zwischen zwei Zielen liegt mindestens das $1{,}25$-Fache der längsten Kante der größeren Bounding-Box; die konkrete Bildschirmgröße je `sizeClass` steht im Skalierungsprofil, nicht im Prompt. Neue Werkzeugtypen oder höhere Spawnraten ändern damit die Kulisse nicht.
 
-Humor prägt Werkstückstimmen, Retro-Hülle und die gesamte Inszenierung. Zusätzliche kurze Gags in der industriellen Welt bleiben spielregelneutral. Beispiele sind eine uebermotiviert vorbeifahrende Qualitaetsmarkierung, ein zu schnell rollender Schraubenkorb, ein kurz aufblinkendes "scharf genug"-Pruefsiegel oder eine Schutzscheibe, die ein Ziel theatralisch freigibt. Jeder Gag hat ein eigenes sichtbares Ereignis, eine Manifest-ID, ein konfiguriertes Spawnprofil und eine optionale Audioereignisgruppe. Er darf weder Trefferzonen veraendern noch notwendige Gesten verschleiern und ist jederzeit per Konfiguration deaktivierbar. Das Startpaket benötigt dafür keine zusätzlichen Sounds über Kap. 3.4 hinaus.
+**Farbigkeit und Kontrast auf dem Boden:** Der Boden ist orange, aber bewusst **abgesenkt** (Sättigung und Helligkeit unter `orange.600`, Konfigurationswert). Ziele tragen ihre dunkle Kontur und bleiben dadurch lesbar; Cyan (Laser), Grün (Erfolg) und Rot (Fehler) bleiben auf dem Boden eindeutig. Die Kulisse verwendet im Zielbereich keine dieser Feedbackfarben als dominante Flächenfarbe.
+
+Das Bühnenbild ist eine **Mischform aus fester Kulisse und optionalen Dekomodulen**: Kulisse, Werkzeuge und Kollegenrequisiten sind konkrete, mit Leonardo AI erzeugte Assets ([00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4 und 3.7). Zusätzlich dürfen rein additive `background-module`-Dekorationen (Lichtlauf, Staub, Bodenreflex) aus konfigurierten Parametern entstehen. Sie liegen **über** der Kulisse, dürfen die `stageArea` aber weder ersetzen noch mit starkem Kontrast füllen und erzeugen keine Werkzeuge. Laser, Funken, Schleifspuren und kleine Ereignisse verwenden Atlas-/JSON-Animationen mit PNG/WebP-Texturen.
+
+Verdeckungen sind bewusstes Gameplay, keine zufaellige Renderfolge: Jedes Ziel ist mindestens $650\text{ ms}$ voll sichtbar, maximal $40\,\%$ seiner Trefferflaeche darf fuer hoechstens $450\text{ ms}$ verdeckt sein, und die relevante Schneiden- beziehungsweise Tap-Zone bleibt sichtbar. In den ersten $15\text{ s}$ der Runde gibt es keine Verdeckung; zwischen zwei verdeckten Zielen liegen mindestens $2\text{ s}$. Eine ausbleibende Aktion auf ein verdecktes Ziel kostet weder Punkte noch Combo. Diese Regeln erhalten den humorvollen "gerade noch erwischt"-Moment, ohne die Messeinteraktion unfair zu machen. Kollegen und Maschinenrequisiten sind **keine** Verdeckung: Sie werden immer hinter der Zielebene gezeichnet und können deshalb keine Trefferzone abdecken.
+
+Humor prägt Werkstückstimmen, Retro-Hülle und die gesamte Inszenierung. Zusätzliche kurze Gags in der industriellen Welt bleiben spielregelneutral. Beispiele sind eine uebermotiviert vorbeifahrende Qualitaetsmarkierung, ein zu schnell rollender Schraubenkorb, ein kurz aufblinkendes "scharf genug"-Pruefsiegel oder eine Schutzscheibe, die ein Ziel theatralisch freigibt. Jeder Gag hat ein eigenes sichtbares Ereignis, eine Manifest-ID, ein konfiguriertes Spawnprofil und eine optionale Audioereignisgruppe. Er darf weder Trefferzonen veraendern noch notwendige Gesten verschleiern und ist jederzeit per Konfiguration deaktivierbar. Das Startpaket benötigt dafür keine zusätzlichen Sounds über Kap. 3.4 hinaus. Der Kollege in grauem Vollmer-Polo ist der ruhigste dieser Gags: Er läuft ausschließlich in der hinteren Bildebene, hat einen konfigurierten Cooldown, ist nie Trefferzone und ist im Betreiberprofil abschaltbar.
 
 | Neue Assetkategorie | Zweck | Pflichtfelder im Manifest |
 |-|-|-|
-| `background-module` | Kachelbares Hallen-, Boden-, Licht- oder Maschinenmodul | `layer`, `parallaxFactor`, `tileWidth`, `palette`, `spawnProfile` |
+| `showroom-stage` | feste Showroom-Kulisse als Spielbühne | `file`, `layer`, `parallaxFactor`, `stageArea`, `palette`, `lightProfile` |
+| `showroom-cast` | gelegentlich bewegte, rein dekorative Requisite (Kollege in grauem Polo, Maschinendetail) | `file`, `layer`, `motionPath`, `speedProfile`, `cooldownMs`, `enabled` |
+| `background-module` | additives, optionales Dekomodul über der Kulisse (Lichtlauf, Staub, Bodenreflex) | `layer`, `parallaxFactor`, `tileWidth`, `palette`, `spawnProfile` |
 | `foreground-occluder` | zeitweise sichtbarer Vordergrundgegenstand | `maxCoveredTargetArea`, `maxDurationMs`, `cooldownMs`, `motionProfile` |
 | `tool-overlay` | stumpfe Schneide, Fortschritt oder geschärfte Kante | `toolId`, `state`, `anchor`, `blendMode` |
 | `humor-event` | rein dekorative, spielregelneutrale Nebeninszenierung | `trigger`, `cooldownMs`, `visualAssetId`, `audioEvent`, `enabled` |
@@ -241,11 +492,11 @@ Die Zuordnung von Bild zu Ton erfolgt ausschließlich ueber das Manifest, nie ue
 
 ## 3.6 Retro-Editor-Betriebshuelle und Spielinszenierung
 
-**Favorit:** Die historische Vollmer-Editorreferenz wird als klar erkennbare, modern touchfaehige Betriebshuelle nachgebildet. Das feste Anthrazitgehause, die gelbe Arbeitsflaeche, die linke Maschinen-/Achsspalte, die rechte grune Ereignisleiste und die untere F-Tastenleiste rahmen das Spiel, ersetzen aber weder die Phaser-Spiellogik noch die direkte Geste auf dem Werkzeug.
+**Favorit:** Die historische Vollmer-Editorreferenz wird als klar erkennbare, modern touchfaehige Betriebshuelle nachgebildet. Das feste Anthrazitgehaeuse, die Showroom-Buehne (Kap. 3.5), die linke Maschinen-/Achsspalte, die rechte grune Ereignisleiste und die untere F-Tastenleiste rahmen das Spiel, ersetzen aber weder die Phaser-Spiellogik noch die direkte Geste auf dem Werkzeug.
 
 | Bereich | Aufgabe | Verbindliche Regel |
 |-|-|-|
-| Gelbe Arbeitsflaeche | Einziger Spielcanvas fuer Ziele, Treffer, Partikel und Parallaxwelt | Kein Bedienelement verdeckt die Flaeche; die Touchgeste findet ausschliesslich hier statt. |
+| Showroom-Buehne (Spielcanvas) | Einziger Spielcanvas fuer die Showroom-Kulisse, Ziele, Treffer, Partikel und leichte Parallaxe | Kein Bedienelement verdeckt die Flaeche; die Touchgeste findet ausschliesslich hier statt. Die Kulisse steht fest und ueberdeckt keine Trefferzone. |
 | Linke Statusspalte | Kompakte Retro-Anzeige fuer Programm, Punkte, verbleibende Zeit, Combo und virtuelle Achsen | Achswerte sind rein visuelles Feedback und werden aus bestaetigten oder lokal vorhergesagten Aktionen animiert; sie sind keine Eingabe. |
 | Linke Maschinenflaeche | Comicartige Bearbeitungszelle mit sichtbarer Aufhaengung fuer Laser und Schleifscheibe | Die Maschine bleibt ausserhalb der Trefferzone und zeigt nur nachvollziehbare, kurze Bewegungen zur jeweiligen Aktion. |
 | Rechte Ereignisleiste | Acht grune Symboltasten fuer harmlose Nebeninszenierungen | Waerend einer Runde loesen Tasten nur lokale, konfigurierbare Bild-/Toneffekte ohne Punkte-, Combo- oder Rollenwirkung aus. |
@@ -255,11 +506,11 @@ Der humoristische Sketch ist die visuelle Referenz fuer Kontrast, Proportionen u
 
 Die Ranglisten `LASER` und `SCHEIBE` sind getrennte, lokal persistent gespeicherte Bestenlisten; ein Eintrag besteht aus Modus, Punktzahl, Anzeigename, Zeitstempel, Hinweis-/Einwilligungsversion und einer technischen Eintrags-ID. Ein Fantasiename genügt. E-Mail, Gewinnspielteilnahme und gegebenenfalls Einwilligung zur Vertriebsansprache werden getrennt von der öffentlichen Rangliste gespeichert. Nur Einträge mit E-Mail und Gewinnspielteilnahme werden bei der Preisvergabe nach der Messe berücksichtigt; die öffentliche Rangliste enthält auch Einträge ohne E-Mail. Betreiber können die erforderlichen Kontakt-/Gewinnspieldaten geschützt für die Nachbearbeitung exportieren, einzelne Einträge oder beide Ranglisten löschen. Exporte sind nicht für Watcher erreichbar und unterliegen denselben Zweck- und Löschregeln. Ohne Eintrag, nach Formular-Timeout oder bei Abbruch werden keine eingegebenen Kontaktdaten gespeichert. Wiederherstellung darf gelöschte/abgelaufene Daten nicht erneut veröffentlichen; Details regelt Kap. 3.8.
 
-Die linke Comicmaschine zeigt als technische Andeutung einen kurzen Portaltraeger mit Schlitten, Kabelschlauch und gemeinsamer Werkzeugaufnahme. Der Laser ist ein schmaler Fokuskopf unter der Aufnahme; die Schleifscheibe haengt seitlich daneben an einem kurzen Schwenkarm mit sichtbarem Schutzring. Im Laser-Modus faehrt der Schlitten entlang einer virtuellen $X$-Achse, richtet sich aus und sendet einen kurzen cyanfarbenen Strahl sichtbar in die gelbe Flaeche. Im Scheiben-Modus schwenkt der Arm vor, die Scheibe dreht an und bleibt mit ihrer Schutzhaube klar als bearbeitendes Werkzeug lesbar. Der Swipe ueber die markierte Werkzeugschneide wird als lineare Zustellung gelesen: Die $X$-Anzeige folgt der Wischrichtung, $Z$ zeigt einen kurzen Zustellimpuls, und ein schmaler Funkenstreifen laeuft entlang der Schneide. Dadurch bleibt die Ninja-Slice-Qualitaet erhalten, ohne dass Besucher eine Scheibe frei zeichnen oder die Maschine selbst steuern muessen.
+Die linke Comicmaschine zeigt als technische Andeutung einen kurzen Portaltraeger mit Schlitten, Kabelschlauch und gemeinsamer Werkzeugaufnahme. Der Laser ist ein schmaler Fokuskopf unter der Aufnahme; die Schleifscheibe haengt seitlich daneben an einem kurzen Schwenkarm mit sichtbarem Schutzring. Im Laser-Modus faehrt der Schlitten entlang einer virtuellen $X$-Achse, richtet sich aus und sendet einen kurzen cyanfarbenen Strahl sichtbar in die Spielflaeche. Im Scheiben-Modus schwenkt der Arm vor, die Scheibe dreht an und bleibt mit ihrer Schutzhaube klar als bearbeitendes Werkzeug lesbar. Der Swipe ueber die markierte Werkzeugschneide wird als lineare Zustellung gelesen: Die $X$-Anzeige folgt der Wischrichtung, $Z$ zeigt einen kurzen Zustellimpuls, und ein schmaler Funkenstreifen laeuft entlang der Schneide. Dadurch bleibt die Ninja-Slice-Qualitaet erhalten, ohne dass Besucher eine Scheibe frei zeichnen oder die Maschine selbst steuern muessen.
 
 Die rechten Symboltasten sind als optionale "Werkstatt-Spielereien" ausgestaltet, etwa Messuhr-Zucken, Foerderband-Kurzlauf, Schutzscheiben-Wischer, Pruefsiegel-Stempel oder ein kleiner Werkzeugwechsel. Jede Taste hat ein eindeutiges Piktogramm, einen maximal $2\text{ s}$ langen Effekt, einen konfigurierbaren Cooldown und optionalen Ton. Easter Eggs duerfen erst nach einer konfigurierten Folge harmloser Ereignistasten oder nach einem Highscore erscheinen; sie verbergen weder Ziele noch Navigation, veraendern keine Wertung und sind im Betreiberprofil global deaktivierbar. Die Taste `F6 TON` und die Systemlautstaerke gelten auch fuer alle Spielereien.
 
-Die Referenz ist keine pixelgenaue Reproduktion: Auf Handhelds werden Lesbarkeit und Zielgroessen gegenueber dekorativer Dichte priorisiert. Die Spalten und F-Tasten werden proportional mit festen Mindestgroessen skaliert; bei schmalem Hochformat wird die rechte Ereignisleiste als ausklappbare Symbolschublade angezeigt, waehrend die gelbe Spielflaeche mindestens $70\,%$ der Breite erhaelt. Der Watcher uebernimmt die Arbeitsflaeche und eine grossformatige Maschinenanimation, zeigt jedoch weder F-Tasten noch Ereignistasten als bedienbar an.
+Die Referenz ist keine pixelgenaue Reproduktion: Auf Handhelds werden Lesbarkeit und Zielgroessen gegenueber dekorativer Dichte priorisiert. Die Spalten und F-Tasten werden proportional mit festen Mindestgroessen skaliert; bei schmalem Hochformat wird die rechte Ereignisleiste als ausklappbare Symbolschublade angezeigt, waehrend die Spielflaeche (Showroom-Buehne) mindestens $70\,%$ der Breite erhaelt. Der Watcher uebernimmt die Showroom-Buehne und eine grossformatige Maschinenanimation, zeigt jedoch weder F-Tasten noch Ereignistasten als bedienbar an.
 
 ## 3.7 Lokaler Windows-Betrieb und verbindlicher Kabel-Fallback
 
@@ -335,13 +586,14 @@ Der Datenschutzhinweis ist vor Speichern erreichbar; Öffnen oder Schließen des
 | Schnittstelle | Richtung | Datenstruktur / Protokoll |
 |-|-|-|
 | Sitzungsbeitritt | Client -> Server | `JoinRequest { ClientInstanceId, RequestedRole, ResumeToken? }`; lokal gleichursprünglich über Loopback, externer Watcher über HTTPS/WebSocket. Antwort enthält kurzlebige Berechtigung und `RoleVersion`; aktive Rolle nur mit lokaler Betreiber-Provisionierung, nicht allein aufgrund von `RequestedRole`. |
-| Spieleraktion | Aktiver Client -> Server | `ActionRequested { RoundId, CommandSequence, ToolId, ActionKind, InputTimestamp, Gesture }`; `ActionKind` ist `tap` oder `swipe`. |
-| Bestätigung | Server -> alle Clients | `ActionResolved { RoundId, EventId, StateVersion, Outcome, HitZone, AudioEvent, ScoreDelta, ToolState, ServerTimestamp }`; identisch wiederholbar. `Outcome` unterscheidet `success`, `wrong_sharpening`, `shaft_hit`, `miss`; `AudioEvent` ist je Modus ausschließlich `laser_success`, `laser_fail`, `saw_success` oder `saw_fail`. Audio nur am aktiven Client, genau einmal je `EventId`. |
+| Spieleraktion | Aktiver Client -> Server | `ActionRequested { RoundId, CommandSequence, ToolId, ActionKind, InputTimestamp, Gesture }`; `ActionKind` ist `tap` oder `swipe`, `Gesture { Kind, Points[], StartedAtMs, EndedAtMs }`. |
+| Bestätigung | Server -> alle Clients | `ActionResolved { RoundId, EventId, StateVersion, Outcome, HitZone, AudioEvent, ScoreDelta, ToolState, ServerTimestamp }`; identisch wiederholbar. `Outcome` unterscheidet `success`, `wrong_sharpening`, `shaft_hit`, `miss` und wird allein nach Kap. 3.3.1 bestimmt; `HitZone { ZoneId, Role }` nennt die getroffene Zone (`cut` oder `shaft`, leer bei `miss`). `AudioEvent` ist je Modus ausschließlich `laser_success`, `laser_fail`, `saw_success` oder `saw_fail`. Audio nur am aktiven Client, genau einmal je `EventId`. |
 | Zustandssnapshot | Server -> Client | `GameSnapshot { RoundId, StateVersion, Phase, ActiveClientId, Mode, RemainingMs, Score, Combo, Tools }`; bei Join, Reconnect und Versionslücke. |
 | Highscore / Kontakt | Aktiver Client -> Server | `HighscoreSubmitted { RoundId, Name, LeaderboardConsent, PrivacyVersion, Email?, PrizeParticipation, TermsVersion?, SalesContactConsent }`; Name oder Fantasiename, Modus/Punkte aus der Serverrunde. Gewinnspielteilnahme verlangt E-Mail und bestätigte Bedingungen; Vertriebsansprache verlangt separat E-Mail und Einwilligung. Ohne beides wird keine zwecklose E-Mail gespeichert. Öffentliche Antwort nur Anzeigename, Punktzahl und Rang; Löschcode nur privat. Überspringen/Timeout speichert nichts. |
 | Nachmesse-Auswertung | Betreiber -> lokaler Server | geschützter Export von Gewinnspielkontakten beziehungsweise eingewilligten Leads, einschließlich Zweck, Eintrags-ID und Hinweis-/Bedingungs-/Einwilligungsversion. Keine Watcherberechtigung; Gewinnberechtigung serverseitig prüfen, keine E-Mail in öffentlichen Ranglisten. |
 | Betrieb | Blazor-Shell -> Server | lokaler Diagnose-/Resetvertrag; der Betreiber-Slide für Freigabe/Abbruch erfordert Betreiberberechtigung und erhöht `RoleVersion`, bei Abbruch zusätzlich `RoundId`. |
 | Konfiguration | Host -> Clients | versionierte Gameplay-, Asset-, Audio- und Datenschutzkonfiguration: Laufzeit, Punkte, Trefferzonen, Dateipools, Zufallsregel, Mischerlimits, Ducking, Hinweistext und Löschregeln; validiertes Neuladen zwischen Runden ohne Neubau. |
+| Werkzeug-/Zonenmanifest | Host -> Server und Clients | `ToolManifestEntry { ToolId, ToolType, Interaction, SizeClass, Pkd, VisualAssetId, Pivot, HitZones[], CutDirectionDeg?, MinStrokeLengthNormalized?, StateOverlays[], ScoreProfileId, AudioPools, LicenseStatus }`; `HitZone { ZoneId, Role: "cut"|"shaft", Points[] }` in normalisierten Koordinaten relativ zur Werkzeug-Bounding-Box. Der Validator erzwingt genau eine `cut`- und eine `shaft`-Zone, lückenlose Silhouettenabdeckung, `Interaction` `tap`/`swipe` sowie vorhandene Bild- und Audioreferenzen; bei Fehlern bleibt die letzte gültige Fassung aktiv. Dasselbe Manifest führt die Kategorien `showroom-stage`, `showroom-cast` und `spawnProfiles` (Beispiel in Kap. 3.4.7); der Validator erzwingt dort das Vorhandensein einer `stageArea` mit gültigen Grenzen innerhalb `0..1` und der Mindestfläche aus Kap. 3.5. Die Datei wird generiert (siehe [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md)); das Schema bleibt hier verbindlich. |
 
 Ein lokaler ASP.NET-Core-Dienst verwendet SignalR/WebSocket für Ereignisse und Snapshots. Transportzustellung ersetzt keine Fachlogik: Der Server dedupliziert `ClientInstanceId + CommandSequence`, prüft `RoundId` und aktive Rolle und beantwortet Wiederholungen idempotent. Ein atomarer Rollenwechsel entzieht zuerst die alte Rolle, erhöht `RoleVersion`, weist dann die neue Rolle zu und sendet einen Snapshot. Die Betreiberaktion `ReleaseRole` ist außerhalb einer Runde zulässig; `AbortRoundAndReleaseRole` beendet die aktive Runde ohne Highscoreeintrag.
 
@@ -355,12 +607,12 @@ Ein lokaler ASP.NET-Core-Dienst verwendet SignalR/WebSocket für Ereignisse und 
 
 | AP | Ziel / Scope | Betroffene Komponenten | Abhängigkeiten | Validierung | Done-Kriterium |
 |-|-|-|-|-|-|
-| AP-01 | Betriebsnachweise für Messeaufbau vorbereiten. | LifeBook-U9313X-/27-Zoll-QHD-Profil, HDMI-Primärweg, USB-C-Ersatzweg, Audioausgang, schlanke Medien-/Datenschutzliste | Kann parallel zu AP-02 bis AP-05 erfolgen; für die Messefreigabe vor AP-06 abschließen | Checkliste gegen Konzept prüfen; B-01 und B-02 als Nachweise führen | Prüffähige Betriebscheckliste liegt vor; kein Implementierungsschritt ist davon abhängig. |
+| AP-01 | Betriebsnachweise für Messeaufbau vorbereiten. | LifeBook-U9313X-/27-Zoll-QHD-Profil, HDMI-Primärweg, USB-C-Ersatzweg, Audioausgang, schlanke Werkzeugbild-/Zonen-/Medien-/Datenschutzliste | Kann parallel zu AP-02 bis AP-05 erfolgen; für die Messefreigabe vor AP-06 abschließen | Checkliste gegen Konzept prüfen; B-01 und B-02 als Nachweise führen | Prüffähige Betriebscheckliste liegt vor; kein Implementierungsschritt ist davon abhängig. |
 | AP-02 | Reproduzierbares Projektgerüst und lokalen Offline-Host aufsetzen. | .NET-Solution, ASP.NET Core, Blazor-Betriebshülle, TypeScript/Phaser, Windows-Paketierung | — | sauberer Build; Kaltstart mit deaktiviertem WLAN und ohne WAN | Ein Startablauf öffnet Host und aktiven Client auf demselben Convertible sowie optional einen lokalen Kabel-Watcher. |
-| AP-03 | Autoritativen Runden-, Punkte-, Rollen- und Synchronisationskern implementieren. | C#-Domäne, SignalR, Trefferzonen, Konfiguration, Snapshots, MSTest | AP-02 | Tests für 60-s-Standard, konfigurierbare Dauer, Fehl-/Schaftabzug, Rundengrenzen, Deduplizierung und passive Fernclients | Genau ein lokaler Client ist aktiv; jede Geste zählt höchstens einmal, negative Punkte beenden keine Runde und Fernclients bleiben passiv. |
-| AP-04 | Tap-Laser, Säge-Swipe und humorvolle Retro-Editor-Hülle prototypisch umsetzen. | Phaser, Bohrer/Fräser mit PKD-Varianten und Schaftzonen, Sägen, Parallaxe, F-Tasten, lokale Watcher-Ansicht | AP-03 | Touch-, Zonen-, Full-HD-Host-/QHD-Watcher-/DPI-, Verdeckungs- und lokale Latenztests | Gesten und Schaftabzug sind eindeutig; lokale Bildrückmeldung erfüllt das Budget, 27-Zoll-QHD-Kabel-Watcher zeigt dieselbe Runde ohne Eingaben. |
+| AP-03 | Autoritativen Runden-, Punkte-, Rollen- und Synchronisationskern implementieren. | C#-Domäne, SignalR, Trefferzonen-Klassifikation (`cut`/`shaft`), Konfiguration, Snapshots, MSTest | AP-02 | Tests für 60-s-Standard, konfigurierbare Dauer, Zonenpriorität/-toleranz, Fehl-/Schaftabzug, Rundengrenzen, Deduplizierung und passive Fernclients | Genau ein lokaler Client ist aktiv; jede Geste zählt höchstens einmal, es gibt genau ein Ergebnis je Geste (Kap. 3.3.1), negative Punkte beenden keine Runde und Fernclients bleiben passiv. |
+| AP-04 | Tap-Laser, Säge-Swipe und humorvolle Retro-Editor-Hülle prototypisch umsetzen. | Phaser, Showroom-Kulisse `bg_0001` mit `stageArea`, Kollegenrequisiten `cast_*`, Werkzeugbilder mit PKD-Varianten, Zonen-Editor und generiertes Manifest ([00003](00003-c-vollmer-manifest-und-hilfstools.concept.md)), Zustands-Overlays aus der `cut`-Zone, Sägeblätter, leichte Parallaxe, F-Tasten, lokale Watcher-Ansicht | AP-03 | Touch-, Zonen-/Silhouettenabdeckungs-, Zustands-, Bühnen-/Ziellast-/Kontrast-, Full-HD-Host-/QHD-Watcher-/DPI-, Verdeckungs- und lokale Latenztests | Trefferzonen decken die Werkzeugsilhouette lückenlos ab; Erfolg, falsches Schärfen, Schafttreffer und Fehlschlag sind je Geste eindeutig und der Werkzeugzustand (`dull`, `in_progress`, `sharp`, `failed`) ist sichtbar korrekt; die `stageArea` bleibt auch bei maximaler Zielzahl frei, detaillarm und lesbar; die lokale Bildrückmeldung erfüllt das Budget, der 27-Zoll-QHD-Kabel-Watcher zeigt dieselbe Runde ohne Eingaben. |
 | AP-05 | Inhalte, Audiopools, Musikmischer, Highscores und Lead-/Gewinnspielerfassung ausbauen. | Manifest, Success-/Fail-Pools, Zufallsbeutel, Ducking, Kanalgrenzen, VWC-Tokenzuordnung, Datenschutz-Overlay/-Konfiguration, Ranglisten, Kontaktformular und Betreiberexport | AP-04; Audio-Platzhalter zulässig, Lieferstatus aus B-02 bleibt sichtbar | Audio-Burst-/Poolgrößen-/Ducking-, Token-/Kontrast-, Overlay-, Konfigurationswechsel-, Persistenz-, Preisberechtigungs-, Einwilligungs-, Export- und Löschtests | Rundenfluss, zwei Effekte maximal, orange Hauptaktionen, semantisch eindeutige Feedbackfarben, Musik-Ducking, Hinweis ohne Neubau, Fantasienamen ohne E-Mail und Preisvergabe nur mit E-Mail sowie getrennte Vertriebsfreigabe sind umgesetzt. |
-| AP-06 | Messehärtung und verbindlichen Kabel-Fallback auf Originalhardware nachweisen. | Windows-Kiosk, Monitor-/Audioumschaltung, Recovery, finale Medien, Betriebsdokumentation | AP-05; B-01 und B-02; geklärte Vorgaben aus OP-03/OP-04 umsetzen | Kaltstart ohne Netz, Kabel-Hotplug, optionaler Funkverlust, vier Stunden Dauerlauf, Hörcheck und Datenschutzprüfung | Offline- und Kabelbetrieb sind nachgewiesen, Produktionssounds übernommen/geliefert/geprüft, Datenschutzhinweis konfiguriert und Nachmesse-Auswertung sowie Wiederanlauf geprobt. |
+| AP-06 | Messehärtung und verbindlichen Kabel-Fallback auf Originalhardware nachweisen. | Windows-Kiosk, Monitor-/Audioumschaltung, Recovery, finale Medien, Betriebsdokumentation | AP-05; B-01 und B-02; geklärte Vorgaben aus OP-03/OP-04 umsetzen | Kaltstart ohne Netz, Kabel-Hotplug, optionaler Funkverlust, vier Stunden Dauerlauf, Bild-/Zonencheck, Bühnenbild-/Ziellastcheck, Hörcheck und Datenschutzprüfung | Offline- und Kabelbetrieb sind nachgewiesen, Showroom-Bühnenbild mit freier Zielfläche, Werkzeugbilder und Trefferzonen sowie Produktionssounds übernommen/geliefert/geprüft, Datenschutzhinweis konfiguriert und Nachmesse-Auswertung sowie Wiederanlauf geprobt. |
 
 | Option | Vorteile | Nachteile |
 |-|-|-|
@@ -387,12 +639,13 @@ Empfohlene Werkzeuge: Phaser als 2D-Laufzeit-Engine, TypeScript für Clientcode,
 | Rundenlänge | Standardrunde endet serverautoritativ nach $60\text{ s}$; konfigurierbarer Bereich lässt nur $30$ bis $90\text{ s}$ zu. |
 | Touch | Tap und Swipe erzeugen lokal sichtbares Feedback in $\leq 50\text{ ms}$ p95 auf dem Zielhandheld. |
 | Framerate | Aktiver Client erreicht $\geq 55\text{ FPS}$ p95, Watcher $\geq 50\text{ FPS}$ p95 unter dem festgelegten Maximalspawnprofil. |
-| Hintergrund und Verdeckung | Jedes Ziel ist mindestens $650\text{ ms}$ vor der ersten Verdeckung vollständig sichtbar; keine Verdeckung überschreitet $40\,\%$ Trefferfläche oder $450\text{ ms}$. |
-| Retro-Editor-Huelle | Die gelbe Arbeitsflaeche ist der einzige Ziel- und Gestenbereich; linke Achsen reagieren sichtbar auf Laser und Schleifswipe, ohne selbst Eingabe zu werden. |
-| Design-Tokens und Kontrast | HUD, Bedienhülle und Overlays verwenden die semantische VWC-Zuordnung: Orange für Fokus/Hauptaktion, Cyan für Laser, Grün für Erfolg, Rot für Fehler und Gelb für die Arbeitsfläche. Touch- und Tastaturfokus bleiben auf anthrazitfarbenem Gehäuse sichtbar; Spielwelt und Effekte bleiben innerhalb der Lesbarkeitsregeln gestalterisch frei. |
+| Hintergrund und Verdeckung | Die Showroom-Kulisse bleibt fest; Kollegen- und Maschinenrequisiten laufen ausschließlich hinter der Zielebene und verdecken nie ein Ziel. Jedes Ziel ist mindestens $650\text{ ms}$ vor der ersten Verdeckung vollständig sichtbar; keine Verdeckung überschreitet $40\,\%$ Trefferfläche oder $450\text{ ms}$. |
+| Showroom-Bühne und Ziellast | Die Kulisse liefert eine detaillarme `stageArea` von mindestens $55\,\%$ der Canvasfläche und enthält darin keine Maschinen-, Möbel- oder Personensilhouette; bei `maxConcurrentTargets` gleichzeitigen Zielen bleibt die Summe der Werkzeug-Bounding-Boxen unter $45\,\%$ der `stageArea`, der Mindestabstand beträgt das $1{,}25$-Fache der größeren Bounding-Box, und die Silhouette jedes Ziels bleibt gegen den Boden erkennbar. |
+| Retro-Editor-Huelle | Die Showroom-Buehne ist der einzige Ziel- und Gestenbereich; linke Achsen reagieren sichtbar auf Laser und Schleifswipe, ohne selbst Eingabe zu werden. |
+| Design-Tokens und Kontrast | HUD, Bedienhülle und Overlays verwenden die semantische VWC-Zuordnung: Orange für Fokus/Hauptaktion, Cyan für Laser, Grün für Erfolg und Rot für Fehler; `yellow.600` bleibt Shell- und Weltakzent. Der orangefarbene Bühnenboden ist ein abgesenkter Weltwert und macht weder Fokus-/Hauptaktionsorange noch Fehlerrot verwechselbar; Ziele behalten auf dem Boden ihre dunkle Kontur. Touch- und Tastaturfokus bleiben auf anthrazitfarbenem Gehäuse sichtbar; Spielwelt und Effekte bleiben innerhalb der Lesbarkeitsregeln gestalterisch frei. |
 | Funktions- und F-Tastenleiste | `F1` ist ein nicht rastender Starttaster. `F2` bis `F6` sind ausreichend grosse, visuell rastende Schalter; `F2 LASER` und `F3 SCHEIBE` bleiben stets gegenseitig ausschliessend, genau einer ist aktiv. Die grauen Tasten enthalten ausser `F1` bis `F6` keinen weiteren Text. Alle rechten Ereignistasten sind wertungsneutral und respektieren `TON`. |
 | Laser- und Schleifscheiben-Inszenierung | Die linke Maschine zeigt Portaltraeger, Schlitten, Kabelschlauch, Fokuskopf sowie eine seitliche Scheibe mit Schutzring. Ein Swipe entlang der sichtbaren Schneide zeigt gerichtete Achsbewegung, Scheibenanlauf und Funkenstreifen, ohne eine freie Maschinensteuerung oder unklare Trefferzone zu erzeugen. |
-| Kleine Viewports | Im schmalen Hochformat bleibt die gelbe Spielflaeche mindestens $70\,%$ breit; die Ereignisleiste wechselt ohne Ueberlappung in eine Symbolschublade. |
+| Kleine Viewports | Im schmalen Hochformat bleibt die Spielflaeche (Showroom-Buehne) mindestens $70\,%$ breit; die Ereignisleiste wechselt ohne Ueberlappung in eine Symbolschublade. |
 | Highscore und Neustart | Name oder Fantasiename plus Ranglisteneinwilligung genügen, E-Mail darf leer bleiben; Überspringen/Timeout gibt ohne Speicherung frei. `LASER` und `SCHEIBE` bleiben getrennt. Gültige Einträge überstehen einen Neustart; gelöschte/abgelaufene nicht. E-Mail fehlt in öffentlichen DTOs, Logs und Kabelanzeige. |
 | Leads und Preisvergabe | E-Mail-Feld ist aktiv; leerer Wert verhindert nur Gewinnspiel-/E-Mail-Kontaktteilnahme, nicht Spiel/Highscore. Ungültige ausgefüllte Adresse wird beanstandet. Preisberechtigte Exportliste enthält ausschließlich Teilnehmer mit E-Mail und bestätigten Bedingungen. Vertriebsansprache nur bei separater Einwilligung; deren Ablehnung verändert die Gewinnchance nicht. Daten sind nach Messeende noch zur Preisabwicklung vorhanden; Export nur für Betreiber. |
 | Synchronisierung | Befehl bis Server p95 $\leq 75\text{ ms}$, bestätigter Clientzustand p95 $\leq 150\text{ ms}$ lokal; optionaler Netzwerk-Watcher p95 $\leq 250\text{ ms}$ im gewählten Netz. Funkverlust beeinflusst lokale Wertung und Kabelanzeige nicht. |
@@ -401,6 +654,10 @@ Empfohlene Werkzeuge: Phaser als 2D-Laufzeit-Engine, TypeScript für Clientcode,
 | Offline und Kabel | Kaltstart, Runde, Rangliste, lokale Watcher-Ansicht, Musik und Assets funktionieren mit deaktiviertem WLAN und gezogenem Netzwerkkabel. Externen Bildschirm vor/während/nach der Runde anschließen und abziehen: keine zweite aktive Rolle, kein Timerreset, keine Veröffentlichung privater Formulare. Audioausgang nach Hotplug prüfen. |
 | Full HD, QHD und Skalierung | Aktiver LifeBook-Host: 1920 × 1080 bei 100/125/150 % Windows-Skalierung; passiver 27-Zoll-Watcher: 2560 × 1440 bei festgelegter Skalierung. UI, Canvas und Trefferzonen stimmen überein. Andere Seitenverhältnisse verzerren keine Zonen, Mindesttouchflächen und Letterboxing bleiben erhalten. |
 | Wertung | Erfolg +10, falsches Schärfen -5, Schaft -10, Fehlschlag -5 als Startprofil; geänderte Werte ohne Build aktivierbar. Zonengrenzen, PKD-/Nicht-PKD- und Größenvarianten prüfen; ein Versuch zählt einmal, negative Stände enden erst mit dem Timer. |
+| Werkzeugbild und Trefferzone | Die Vorgaben stammen aus [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4 und 3.7.1: genau ein Werkzeug auf transparentem Grund mit 8 bis 10 % Rand und bei 96 px erkennbarer Silhouette; die Zonen `cut` und `shaft` decken die Silhouette lückenlos ab, `cut` ist zusammenhängend und nicht leer, und an der gemeinsamen Grenze wertet `shaft`. |
+| Werkzeugzustände | Alle vier Zustände sind sichtbar unterscheidbar: `dull` beim Spawn, `in_progress` als kurzer Übergang, danach genau einmal `sharp` oder `failed`; `sharp` und `failed` lösen bei erneutem Kontakt kein Ergebnis, keine Punkte und keinen Sound aus, und `failed` verschwindet beschleunigt. |
+| Erfolg-/Fehler-Entscheidung | Die Tabelle aus Kap. 3.3.1 liefert je Modus und Geste genau ein `Outcome`: Tap in `cut` = `success`, Tap in `shaft` = `shaft_hit`, falsche Richtung/zu kurzer Swipe/Tap im Schleif-Modus = `wrong_sharpening`, Geste ohne Kontakt = `miss`; nur `success` startet einen Success-Sound, Schaft/Fehlbearbeitung/Fehlschlag teilen den Fail-Sound. |
+| Bildsatz-Konsistenz und Leonardo-Ablauf | Alle Werkzeuge nutzen dieselbe Leinwandgröße, Lichtrichtung und Kontur; Größenvarianten skalieren mit den Zonen; Chroma-Key/Freistellung erzeugt saubere Alpha-Kanten; eine erneute Generierung mit festgehaltenem Seed reproduziert die Form. Kulisse und Kollegenrequisiten folgen derselben Linienführung; Personen sind separate Alpha-Requisiten und nicht in `bg_0001` eingebrannt. |
 | Audioereignisse und Pools | Je Modus nur `success` und `fail`; Schaft/Fehlbearbeitung/Fehlschlag teilen den Fail-Pool. Jedes bestätigte Ereignis startet Kurzfeedback. Poolgrößen 1, 3, 6 und 8 ohne Codeänderung prüfen, leerer Pool nutzt Fallback. Alle Varianten vor erneutem Mischen einmal ziehen; ab zwei Varianten keine direkte Wiederholung. Wiederholte Event-ID, Snapshot und Reconnect sind stumm. |
 | Audio-Burst und Ducking | Zehn Aktionen in einer Sekunde: höchstens zwei Effektquellen plus Musik, keine wachsende Queue, veraltete Stimmen nach spätestens 200 ms verwerfen. Musikabsenkung 12 dB, Attack 20 ms, Hold 120 ms, Release 250 ms; keine kumulative Absenkung, kein unbeabsichtigtes Entstummen. Kurzfeedback p95 höchstens 100 ms nach Gestenende. |
 | Audiofehler und Ausgabe | Fehlende/defekte Sprachdatei erhält Kurzfeedback, fehlendes Kurzfeedback nutzt Ersatzton; keine Musik blockiert keine Runde. Autoplay-Sperre, F6 laut/leise/stumm und Wechsel des Windows-Audioziels prüfen; beide Watcherarten bleiben stumm. Finale Dateien anhören und Pegel/Clipausschnitte prüfen. |
@@ -419,7 +676,7 @@ Diese Nachweise sind keine offenen Konzeptentscheidungen und blockieren weder Pr
 | Nachweis | Inhalt | Verantwortlicher Zeitpunkt |
 |-|-|-|
 | B-01 Hardware und Audioausgabe | Auf dem tatsächlichen LifeBook und 27-Zoll-QHD-Monitor: HDMI-Primärweg, USB-C-Ersatzweg, Windows-Skalierung, Touch, Hotplug sowie der fest gewählte Audioausgang funktionieren im Netz-aus-Test. „Audioabnahme“ bedeutet ausschließlich diese technische Wiedergabeprüfung einschließlich Lautstärke und Umschaltverhalten, keine kreative oder fachliche Freigabe. | Vor AP-06 |
-| B-02 Produktionsmedien | Die vereinbarten Bild-, Sprach-, UI- und Musikdateien liegen mit Manifestzuordnung vor; der Hörcheck prüft nur Zuordnung, Pegel, Loopgrenzen und Clipping. Platzhalter und technisch leere Pools bleiben bis dahin für die Implementierung zulässig. | Vor AP-06 |
+| B-02 Produktionsmedien | Die Bildlieferliste aus [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4 ist vollständig geliefert: zwölf Werkzeugbilder, zwölf Zustands-Overlays, Bühnenbild, Requisiten, Verdecker und Effektatlanten, jeweils mit gültigen Zonen, sowie Sprach-, UI- und Musikdateien. Der Bild-/Zonencheck folgt der Sichtprüf-Checkliste aus 00002 Kap. 3.7.1 (ein Objekt pro Bild, transparente Kante auf orangefarbenem Grund, Mindestrand, Silhouettenlesbarkeit bei 96 px, lückenlose `cut`/`shaft`-Abdeckung, Overlay-Deckung in allen Größenklassen); der Bühnenbildcheck prüft 16:9, Mindestfläche und Detaillarmut der `stageArea`; der Hörcheck prüft Zuordnung, Pegel, Loopgrenzen und Clipping. Das Manifest ist über die Werkzeugkette aus [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md) erzeugt und validiert. Platzhalter und technisch leere Pools bleiben bis dahin für die Implementierung zulässig. | Vor AP-06 |
 
 # 7. Risiken
 
@@ -431,6 +688,7 @@ Diese Nachweise sind keine offenen Konzeptentscheidungen und blockieren weder Pr
 | R-04 | Serverausfall unterbricht die gemeinsame Wertungsrunde. | mittel |
 | R-05 | Überlappende Stimmen, Autoplay-Sperren oder Audio-Umschaltung zerstören das hörbare Feedback. | mittel |
 | R-06 | Gewinnspieladressen könnten ohne separate Einwilligung für Vertriebsansprache verwendet oder vor Preisabwicklung gelöscht werden. | hoch |
+| R-07 | Die Showroom-Kulisse könnte Ziele verdecken oder den Zielbereich zu unruhig und kontrastarm machen. | mittel |
 
 ## 7.1 R-01: Messehardware und Kabelbetrieb
 ### tl;dr
@@ -498,6 +756,17 @@ Lead-Erzeugung und Preisbenachrichtigung nach der Messe sind festgelegt. Eine re
 - **Favorit:** Den Disclaimer aus Kap. 3.8 einsetzen, Preisvergabe an erreichbare E-Mail binden, Vertriebsansprache separat erlauben lassen und Daten erst nach zweckbezogenen Fristen löschen.
 - **Begründung:** Das unterstützt Leads und Nachmesse-Kontakt, ohne Fantasienamen-Spieler auszuschließen oder eine unbegrenzte Werbeerlaubnis zu unterstellen.
 
+## 7.7 R-07: Showroom-Kulisse und Lesbarkeit der Ziele
+### tl;dr
+- **Favorit:** Die Kulisse liefert eine detaillarme `stageArea`; Ziele sind über Anzahl, Flächenanteil und Mindestabstand begrenzt.
+
+### Detail
+Ein vollständiges Showroom-Bild ist reizvoll, kann aber Ziele überdecken oder deren Kontrast senken. Weil die Kulisse fest und bildschirmfüllend ist, hängt die Lesbarkeit an der Bildkomposition (freier Bodenbereich) und an der Zieldichte, nicht an einer Kamera.
+
+### Empfehlung
+- **Favorit:** `stageArea` mit Mindestfläche und Detaillarmut aus Kap. 3.5 im Bild verbindlich freihalten, Kollegen konsequent hinter die Zielebene legen und die Startwerte `maxConcurrentTargets: 6`, `maxStageCoverage: 0.45` sowie `minTargetSpacingFactor: 1.25` verwenden; den Bühnen-/Ziellastcheck in AP-04 und B-02 nachweisen.
+- **Begründung:** Diese drei Größen begrenzen die sichtbare Überladung, ohne die Kulisse zu verflachen oder bei mehr Content Codeänderungen zu erzwingen. Steigt die Zieldichte später, wird sie im Manifestprofil erhöht, nicht durch ein neues Bild.
+
 # 8. Offene Punkte
 
 | Offener Punkt | Kurzbeschreibung | Status |
@@ -509,6 +778,8 @@ Lead-Erzeugung und Preisbenachrichtigung nach der Messe sind festgelegt. Eine re
 | OP-05 | Fach-/Marketingfreigabe entfällt ausdrücklich | ✅ geklärt |
 | OP-06 | Bestehender Stack auf einem Windows-Gerät | ✅ geklärt |
 | OP-07 | Assetvertrag und Übernahmeregeln | ✅ geklärt |
+| OP-08 | Werkzeugbilder und Trefferzonen mit Leonardo AI | ✅ geklärt |
+| OP-09 | Showroom-Bühnenbild, freie Zielfläche und Zieldichte | ✅ geklärt |
 
 ## 8.1 ✅ OP-01: Zielhardware und Aufstellungsdetails
 ### tl;dr
@@ -541,7 +812,7 @@ Der Messefunk liegt außerhalb des kritischen Spielpfads. Ein drahtloser Watcher
 - Ohne Nutzervorgabe zu Farbe und Schrift wird frei verwendbare Gestaltung gewählt.
 
 ### Detail
-Die Mediengrundlage ist durch die Nutzerangabe geklärt. Es gibt keinen zusätzlichen kreativen Freigabeprozess und keine Pflicht zur Verwendung einer kostenpflichtigen Corporate-Schrift.
+Die Mediengrundlage ist durch die Nutzerangabe geklärt. Es gibt keinen zusätzlichen kreativen Freigabeprozess und keine Pflicht zur Verwendung einer kostenpflichtigen Corporate-Schrift. Dieselbe Vorgabe gilt für die mit Leonardo AI erzeugten Werkzeugbilder; der Lizenzstatus wird pro Asset im Manifest dokumentiert (Kap. 3.4.6).
 
 ### Empfehlung
 - **Favorit:** Gelieferte Eigen-/royaltyfree Medien übernehmen und notwendige eigene Ergänzungen einschließlich Schriften frei verwendbar auswählen.
@@ -589,11 +860,38 @@ Blazor Server ist kein geeigneter primärer Echtzeit-Client; reines Phaser löst
 ### tl;dr
 - Vorhanden: zehn Laser-MP3s unter bisherigen `yell`-Namen. Startvorschlag: Übernahme unter Aktionsnamen und 22 zusätzliche Dateien gemäß Kap. 3.4.4; 3–6 Varianten pro Aktion sind Ziel, keine technische Grenze.
 - Die fehlenden Säge-Stimmen, kurzen Feedback-/UI-Sounds und die Arcade-Musik sind B-02. Ihre Lieferung verändert die Implementierungsreihenfolge nicht.
+- Bildseite geklärt: Kap. 3.4.5 regelt Zonen, Größen und Zustände. Produktionsvorlage, Lieferliste mit 37 Assets, Zustands-Overlays, Requisiten, Störgegenstände, Leonardo-Ablauf und Sichtprüfung stehen in [00002](00002-c-vollmer-assetlieferung.concept.md); die Manifestgenerierung und die Autoren-Hilfstools stehen in [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md).
 
 ### Detail
-Alle Aktionen und Zufallspools sind mit konkreten Dateinamen spezifiziert. Die Planung stützt sich auf den Dateibestand, nicht auf eine hier erfolgte Klang- oder Längenanalyse.
+Alle Aktionen und Zufallspools sind mit konkreten Dateinamen spezifiziert. Die Planung stützt sich auf den Dateibestand, nicht auf eine hier erfolgte Klang- oder Längenanalyse. Für die Werkzeugbilder sind Zonen, Skalierung und Zustände in Kap. 3.4.5 dieses Dokuments, Aufbau, Mengen und der Produktionsablauf mit Leonardo AI in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4 und 3.7 festgelegt; die Trefferbewertung hängt allein an den normalisierten Zonen, nicht an Bilddetails. Das Manifest-Schema und ein vollständiges Beispiel stehen in Kap. 3.4.7 und Kap. 4 dieses Dokuments; die Datei selbst wird nach [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md) erzeugt.
 
 ### Empfehlung
 - **Favorit:** Genau die Lieferliste aus Kap. 3.4.4 verwenden; bis B-02 bleiben Platzhalter und die dort definierten Audio-Fallbacks zulässig. Die Zuordnung wird nach Hörcheck gegebenenfalls allein im Manifest korrigiert.
 - **Begründung:** Der Nutzer weiß vorab, welche Dateien fehlen, während der Spielkern, Pools, Mixer und Fallbacks ohne Produktionsmedien implementierbar bleiben.
-- **Nächste Aktion:** B-02 vor AP-06 durchführen: Laserbestand auf `laser_success_*`/`laser_fail_*` verteilen; jeweils drei `saw_success_*`, `saw_fail_*`, `feedback_success_*`, `feedback_fail_*`, `ui_confirm_*`, `round_start_*`, `round_end_*` sowie `arcade_music_01.mp3` liefern oder produzieren. AP-06 prüft Zuordnung, Pegel, Loopgrenzen und Mischer.
+- **Nächste Aktion:** B-02 vor AP-06 durchführen: Die Bildlieferliste aus [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4 vollständig produzieren (zwölf Werkzeugbilder, zwölf Zustands-Overlays, Bühnenbild, vier Requisiten, sechs Verdecker, zwei Effektatlanten), Zonen über den Zonen-Editor setzen und das Manifest über die Werkzeugkette aus [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md) generieren und validieren; Laserbestand auf `laser_success_*`/`laser_fail_*` verteilen; jeweils drei `saw_success_*`, `saw_fail_*`, `feedback_success_*`, `feedback_fail_*`, `ui_confirm_*`, `round_start_*`, `round_end_*` sowie `arcade_music_01.mp3` liefern oder produzieren. AP-06 prüft Bild-/Zonencheck, Bühnenbild-/Ziellastcheck, Zuordnung, Pegel, Loopgrenzen und Mischer.
+
+## 8.8 ✅ OP-08: Werkzeugbilder und Trefferzonen mit Leonardo AI
+### tl;dr
+- Werkzeugbilder werden mit Leonardo AI erzeugt und über einen festen Ablauf (uniformer Hintergrund → Freistellen → Normieren → Zonen setzen → Manifest) zu transparenten, konsistenten WebP-Dateien.
+- Erfolg und Misserfolg hängen an den normalisierten Zonen `cut`/`shaft`, nicht an Bilddetails; Entscheidungsregeln stehen in Kap. 3.3.1, Zonen-, Größen- und Zustandsregeln in Kap. 3.4.5, Mengen und Werkzeugliste in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.
+
+### Detail
+Leonardo AI liefert Rasterbilder ohne verlässliche Transparenz; deshalb ist der Produktionsablauf verbindlich. Die Zone ist die einzige Autorität für einen Treffer; Bildvarianten (Größe, PKD) ändern nur `visualAssetId`, nie die Zonenlogik. Der Werkzeugumfang steht in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.1 (zwölf Werkzeuge); weitere Werkzeuge sind zusätzliche Manifest-Einträge ohne Codeumbau. Der im Werkzeug nicht vorkommende Hintergrund (bevorzugt Magenta `#FF00FF`) wird per Chroma-Key entfernt; bietet das gewählte Paket eine Freistellfunktion, ersetzt sie den Chroma-Key-Schritt. Freistellung und Normierung erfolgen in Affinity nach dem Ablauf in 00002 Kap. 3.7.
+
+### Empfehlung
+- **Favorit:** Werkzeugbilder nach Kap. 3.4.6 als transparente WebP mit festgehaltenem Seed erzeugen, Zonen über den Zonen-Editor aus [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md) setzen und das Manifest generieren und validieren lassen.
+- **Begründung:** Der Ablauf ist mit dem gewählten Generator stabil reproduzierbar und trennt Bildproduktion von der Trefferlogik; die Zonen bleiben auflösungsunabhängig und ohne Codeumbau erweiterbar.
+- **Nächste Aktion:** Die Werkzeuge aus [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.1 in der dortigen Reihenfolge erzeugen, Silhouette bei 96 px prüfen, Zonen mit dem Zonen-Editor aus [00003](00003-c-vollmer-manifest-und-hilfstools.concept.md) setzen und die Manifestvalidierung im Prototyp nachweisen (AP-04, B-02).
+
+## 8.9 ✅ OP-09: Showroom-Bühnenbild und freie Zielfläche
+### tl;dr
+- Geklärt: Das Spielbühnenbild ist die feste Showroom-Kulisse `bg_0001` mit orangefarbenem Boden, festen Maschinen und gelegentlich laufenden Kollegen in grauen Vollmer-Polos; die Ziele liegen davor und bleiben dadurch lesbar.
+- Geklärt: Die Kulisse liefert eine detaillarme `stageArea`; `maxConcurrentTargets`, `maxStageCoverage` und `minTargetSpacingFactor` begrenzen die gleichzeitigen Ziele.
+
+### Detail
+Das Showroom-Bild wird mit Leonardo AI nach Kap. 3.4.6 dieses Dokuments erzeugt; Mengen und Ablage stehen in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.3, das konkrete Referenzbild liefert der Auftraggeber nach. Kollegen sind eigenständige `showroom-cast`-Requisiten und werden nicht in die Kulisse eingebrannt, damit sie animierbar und abschaltbar bleiben. Farbigkeit, Kontrast und Abdeckungsregeln stehen in Kap. 3.5; die technische Tiefenstaffelung steht in 00002 Kap. 3.6.
+
+### Empfehlung
+- **Favorit:** Kulisse `bg_0001` als 16:9-Master mit detaillarmer `stageArea`, Kollegen als separate Alpha-Requisiten und die Ziellastgrenzen aus Kap. 3.5 verwenden.
+- **Begründung:** Das erzeugt die gewünschte leichte 2D-Tiefe einer ruhigen Kulisse, ohne Ziele zu verdecken oder die Lesbarkeit bei mehreren gleichzeitigen Zielen zu verlieren; neue Zieltypen brauchen nur einen Manifesteintrag.
+- **Nächste Aktion:** Referenzbild des Auftraggebers in die Kulisse überführen, `stageArea` prüfen und im Manifest validieren; Nachweis in B-02, AP-04 und AP-06.
