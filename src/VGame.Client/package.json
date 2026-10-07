@@ -1,0 +1,22 @@
+{
+  "name": "vgame-client",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=22.12.0 <25"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "10.0.11",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3",
+    "vite": "6.4.4"
+  }
+}

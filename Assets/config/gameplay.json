@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "roundDurationSeconds": 60,
+  "correctScore": 10,
+  "wrongSharpeningPenalty": -5,
+  "shaftHitPenalty": -10,
+  "missPenalty": -5,
+  "contactToleranceNormalized": 0.02,
+  "maxAngleDeviationDeg": 35,
+  "minStrokeLengthNormalized": 0.18,
+  "failedDespawnMs": 600,
+  "sharpDespawnMs": 1800,
+  "maxConcurrentTargets": 6,
+  "maxStageCoverage": 0.45,
+  "minTargetSpacingFactor": 1.25,
+  "stageAreaX": 0.05,
+  "stageAreaY": 0.28,
+  "stageAreaWidth": 0.9,
+  "stageAreaHeight": 0.64
+}
