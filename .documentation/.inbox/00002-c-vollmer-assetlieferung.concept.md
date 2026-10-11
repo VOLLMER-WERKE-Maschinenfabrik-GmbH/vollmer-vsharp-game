@@ -3,7 +3,7 @@
 | | | |
 |-|-|-|
 | **Erstelldatum:** | 2026-09-28 |
-| **Letzte Änderung:** | 2026-09-28 |
+| **Letzte Änderung:** | 2026-10-11 |
 | **Issue:** | 00002 |
 
 ## Commit-Vorschlag für den finalen Gesamt-Commit
@@ -331,7 +331,7 @@ Die Werte sind ein Startprofil und werden auf der Zielhardware nachjustiert; das
 | Requisite | `cast_####` | `cast_0001.png` | `Assets/images/background/` |
 | Verdecker | `occ_####` | `occ_0001.webp` | `Assets/images/background/` |
 | Effektatlas | `fx_####` | `fx_0001.json` | `Assets/animations/<art>/` |
-| Audio | `<aktion>_<nn>` | `laser_success_01.mp3` | `Assets/audio/<art>/` |
+| Audio | `<aktion>_<nn>` | `cheer_high_01.wav` | `Assets/audio/<art>/` |
 
 Regeln: Eine ID wird genau einmal vergeben und nach dem Entfernen dauerhaft reserviert. Die ID-Vergabe ist aufsteigend und lückenlos je Kategorie; die Datei im Laufzeitordner trägt immer die ID als Namen. Bedeutung und Fachdaten stehen ausschließlich im Manifest, nie im Dateinamen.
 
