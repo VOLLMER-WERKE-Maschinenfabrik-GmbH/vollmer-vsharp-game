@@ -20,6 +20,60 @@ public sealed class GameHubIntegrationTests
     public TestContext TestContext { get; set; }
 
     [TestMethod]
+    [DataRow("background/bg_0001.webp")]
+    [DataRow("tools/tool_0002.webp")]
+    [DataRow("tools/tool_0006.webp")]
+    [DataRow("tools/tool_0010.webp")]
+    public async Task ArtworkImages_AreServedFromCanonicalAssets(string imagePath)
+    {
+        // Prüft die Auslieferung der vier ausgewählten Laufzeitbilder aus dem zentralen Assets-Verzeichnis.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync($"/Assets/images/{imagePath}", TestContext.CancellationToken);
+
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("image/webp", response.Content.Headers.ContentType?.MediaType);
+        Assert.IsNotEmpty(await response.Content.ReadAsByteArrayAsync(TestContext.CancellationToken));
+    }
+
+    [TestMethod]
+    public async Task ArtworkImages_DoNotExposeConfigurationOrMissingImages()
+    {
+        // Prüft, dass nur Bilder freigegeben werden und fehlende Bilder keinen erfolgreichen Abruf ergeben.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        foreach (var requestPath in new[] { "/Assets/config/gameplay.json", "/Assets/images/tools/missing.webp" })
+        {
+            using var response = await client.GetAsync(requestPath, TestContext.CancellationToken);
+            Assert.AreEqual(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        }
+    }
+
+    [TestMethod]
+    [DataRow("tool_0002", 0.90)]
+    [DataRow("tool_0006", 0.80)]
+    [DataRow("tool_0010", 0.90)]
+    public void ArtworkCatalog_ClassifiesCutShaftAndTransparentMargin(string assetId, double cuttingPointX)
+    {
+        // Prüft die Prototypzonen der freigestellten Bilder einschließlich Schaftpriorität und transparentem Rand.
+        using var factory = CreateFactory();
+        var catalog = factory.Services.GetRequiredService<IReadOnlyList<ToolDefinition>>();
+        var definition = Assert.ContainsSingle(catalog.Where(tool => tool.AssetId == assetId));
+        var tools = new[] { new ToolSnapshot(definition, ToolState.Dull) };
+
+        var cuttingContact = VGame.Domain.HitZoneClassifier.FindFirstContact(tools, [new Point2(cuttingPointX, 0.5)], 0);
+        var shaftContact = VGame.Domain.HitZoneClassifier.FindFirstContact(tools, [new Point2(0.5, 0.5)], 0);
+        var marginContact = VGame.Domain.HitZoneClassifier.FindFirstContact(tools, [new Point2(0.01, 0.01)], 0);
+
+        Assert.IsNotNull(cuttingContact);
+        Assert.AreEqual(HitZoneRole.Cut, cuttingContact.HitZone.Role);
+        Assert.IsNotNull(shaftContact);
+        Assert.AreEqual(HitZoneRole.Shaft, shaftContact.HitZone.Role);
+        Assert.IsNull(marginContact);
+        Assert.IsFalse(definition.HasPkd);
+    }
+
+    [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
     public async Task JoinGame_WatcherReceivesSnapshotAndCannotStartRound()
     {

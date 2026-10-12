@@ -8,6 +8,7 @@ using VGame.Server.Security;
 using VGame.Server.Services;
 using System.ComponentModel;
 using System.Diagnostics;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 var hostUrl = builder.Configuration["Host:Urls"] ?? "http://127.0.0.1:5080";
@@ -27,6 +28,14 @@ if (File.Exists(gameplayConfigurationPath))
 var gameplayOptions = builder.Configuration.Get<GameplayOptions>() ?? new GameplayOptions();
 gameplayOptions.Validate();
 builder.Services.AddSingleton(gameplayOptions);
+var artworkCatalogPath = Path.Combine(Path.GetDirectoryName(gameplayConfigurationPath)!, "artwork.prototype.json");
+var artworkJsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+artworkJsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+IReadOnlyList<ToolDefinition> artworkTools = File.Exists(artworkCatalogPath)
+    ? JsonSerializer.Deserialize<ToolDefinition[]>(File.ReadAllText(artworkCatalogPath), artworkJsonOptions)
+        ?? throw new InvalidDataException("Der Artwork-Prototypkatalog ist leer.")
+    : [];
+builder.Services.AddSingleton(artworkTools);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<GameEngine>();
 builder.Services.AddSingleton<IClientOriginPolicy, ClientOriginPolicy>();
@@ -45,6 +54,16 @@ builder.Services.AddRazorComponents()
 var app = builder.Build();
 
 app.UseStaticFiles();
+var assetDirectory = Path.GetDirectoryName(Path.GetDirectoryName(gameplayConfigurationPath))!;
+if (Directory.Exists(Path.Combine(assetDirectory, "images")))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(Path.Combine(assetDirectory, "images")),
+        RequestPath = "/Assets/images",
+        ServeUnknownFileTypes = false
+    });
+}
 app.UseAntiforgery();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ready" }));

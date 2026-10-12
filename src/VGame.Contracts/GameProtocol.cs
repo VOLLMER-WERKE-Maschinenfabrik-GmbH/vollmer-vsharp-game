@@ -68,7 +68,8 @@ public sealed record ToolDefinition(
     double BoundingWidthNormalized,
     double BoundingHeightNormalized,
     string VisualKind = "drill",
-    bool HasPkd = false);
+    bool HasPkd = false,
+    string? AssetId = null);
 
 public sealed record ToolPlacement(
     Point2 Center,

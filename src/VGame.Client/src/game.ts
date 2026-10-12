@@ -21,6 +21,7 @@ type ToolDefinition = {
     boundingHeightNormalized: number;
     visualKind: "drill" | "cutter" | "saw";
     hasPkd: boolean;
+    assetId?: string | null;
 };
 type ToolPlacement = {
     center: Point2;
@@ -101,6 +102,13 @@ class WorkshopScene extends Phaser.Scene {
             .build();
     }
 
+    preload(): void {
+        this.load.image("showroom", "/Assets/images/background/bg_0001.webp");
+        for (const assetId of ["tool_0002", "tool_0006", "tool_0010"]) {
+            this.load.image(assetId, `/Assets/images/tools/${assetId}.webp`);
+        }
+    }
+
     create(): void {
         this.cameras.main.setBackgroundColor("#292f31");
         this.createBackdrop();
@@ -122,16 +130,23 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     private createBackdrop(): void {
+        const hasShowroom = this.textures.exists("showroom");
+        if (hasShowroom) {
+            this.add.image(gameWidth / 2, gameHeight / 2, "showroom")
+                .setDisplaySize(gameWidth, gameHeight);
+        }
         const graphics = this.add.graphics();
-        graphics.fillStyle(0x292f31, 1).fillRect(0, 0, gameWidth, gameHeight);
+        if (!hasShowroom) {
+            graphics.fillStyle(0x292f31, 1).fillRect(0, 0, gameWidth, gameHeight);
+            graphics.fillStyle(0xc76b16, 1).fillRoundedRect(stageArea.x, stageArea.y, stageArea.width, stageArea.height, 6);
+        }
         graphics.fillStyle(0x202628, 1).fillRect(0, 0, gameWidth, 142);
         graphics.fillStyle(0x394145, 1).fillRect(0, 142, gameWidth, 26);
-        graphics.fillStyle(0xc76b16, 1).fillRoundedRect(stageArea.x, stageArea.y, stageArea.width, stageArea.height, 6);
         graphics.lineStyle(2, 0xf1a34c, 0.55).strokeRoundedRect(stageArea.x, stageArea.y, stageArea.width, stageArea.height, 6);
-        for (let x = stageArea.x + 48; x < stageArea.x + stageArea.width; x += 96) {
+        for (let x = stageArea.x + 48; !hasShowroom && x < stageArea.x + stageArea.width; x += 96) {
             graphics.lineStyle(1, 0xffd092, 0.08).lineBetween(x, stageArea.y, x, stageArea.y + stageArea.height);
         }
-        for (let y = stageArea.y + 46; y < stageArea.y + stageArea.height; y += 92) {
+        for (let y = stageArea.y + 46; !hasShowroom && y < stageArea.y + stageArea.height; y += 92) {
             graphics.lineStyle(1, 0xffd092, 0.08).lineBetween(stageArea.x, y, stageArea.x + stageArea.width, y);
         }
         graphics.fillStyle(0xe7d357, 0.86).fillRect(64, 153, 1152, 5);
@@ -149,7 +164,7 @@ class WorkshopScene extends Phaser.Scene {
             fontFamily: "Segoe UI, sans-serif",
             fontSize: "13px"
         });
-        this.add.text(1092, 24, "PROTOTYP  ·  PROZEDURAL", {
+        this.add.text(980, 24, hasShowroom ? "ARTWORK · PROTOTYP" : "PROTOTYP · PROZEDURAL", {
             color: "#fff0d8",
             backgroundColor: "#743d15",
             padding: { x: 9, y: 6 },
@@ -157,13 +172,13 @@ class WorkshopScene extends Phaser.Scene {
             fontSize: "12px",
             fontStyle: "bold"
         });
-        this.add.text(84, 180, "SHOWROOM-BÜHNE · STAGEAREA 90 × 64 %", {
+        this.add.text(84, 180, "SHOWROOM", {
             color: "#fff0d8",
             fontFamily: "Segoe UI, sans-serif",
             fontSize: "12px",
             fontStyle: "bold"
         });
-        this.add.text(84, 603, "WERKZEUGBILDER UND ZONEN SIND PROTOTYPISCHE PLATZHALTER", {
+        this.add.text(84, 603, "PROTOTYP · TREFFERZONEN UND ZUSTANDSEFFEKTE NOCH NICHT FINAL", {
             color: "#4a2d18",
             fontFamily: "Segoe UI, sans-serif",
             fontSize: "11px",
@@ -360,6 +375,12 @@ class WorkshopScene extends Phaser.Scene {
         const graphics = this.add.graphics();
         container.add(graphics);
         container.setData("graphics", graphics);
+        const assetId = tool.definition.assetId;
+        if (assetId && this.textures.exists(assetId)) {
+            const artwork = this.add.image(0, 0, assetId).setDisplaySize(width, height);
+            container.addAt(artwork, 0);
+            container.setData("artwork", artwork);
+        }
         return container;
     }
 
@@ -374,9 +395,14 @@ class WorkshopScene extends Phaser.Scene {
             failed: { shaft: 0x672f32, cut: 0xeb625e, edge: 0x321e20 }
         };
         const colors = stateColors[tool.state];
+        const artwork = container.getData("artwork") as Phaser.GameObjects.Image | undefined;
         graphics.clear();
 
-        for (const zone of tool.definition.hitZones) {
+        if (artwork) {
+            const tint: Record<ToolState, number> = { dull: 0xffffff, inProgress: 0xffd27a, sharp: 0xb6ee8b, failed: 0xff7777 };
+            artwork.setTint(tint[tool.state]);
+        }
+        for (const zone of artwork ? [] : tool.definition.hitZones) {
             const polygon = zone.points.map(point => ({
                 x: (point.x - 0.5) * width,
                 y: (point.y - 0.5) * height
@@ -387,15 +413,15 @@ class WorkshopScene extends Phaser.Scene {
             graphics.strokePoints(polygon, true);
         }
 
-        if (tool.definition.visualKind === "saw") {
+        if (!artwork && tool.definition.visualKind === "saw") {
             graphics.lineStyle(2, 0xf7e7bd, 0.75).strokeCircle(width * 0.2, 0, height * 0.28);
             graphics.lineStyle(1, 0x252a2c, 0.72).lineBetween(-width * 0.18, 0, -width * 0.05, 0);
-        } else {
+        } else if (!artwork) {
             graphics.lineStyle(2, 0xe2e8e7, 0.75).lineBetween(-width * 0.28, -height * 0.1, -width * 0.28, height * 0.1);
             graphics.lineStyle(2, 0xe2e8e7, 0.75).lineBetween(-width * 0.12, -height * 0.1, -width * 0.12, height * 0.1);
         }
 
-        if (tool.definition.hasPkd && tool.state === "dull") {
+        if (!artwork && tool.definition.hasPkd && tool.state === "dull") {
             graphics.fillStyle(0x52dcf5, 1).fillCircle(width * 0.27, -height * 0.15, 5);
             graphics.fillStyle(0x52dcf5, 1).fillCircle(width * 0.34, -height * 0.15, 5);
         }
@@ -403,8 +429,10 @@ class WorkshopScene extends Phaser.Scene {
         const label = tool.state === "dull" ? "STUMPF" : tool.state === "inProgress" ? "SCHLIFF" : tool.state === "sharp" ? "SCHARF" : "DEFEKT";
         const stateLabel = container.getByName("state-label") as Phaser.GameObjects.Text | null;
         if (stateLabel === null) {
-            container.add(this.add.text(0, height * 0.38, label, {
+            container.add(this.add.text(0, height * 0.5 + 3, label, {
                 color: "#202426",
+                backgroundColor: "#ffdda6",
+                padding: { x: 4, y: 2 },
                 fontFamily: "Segoe UI, sans-serif",
                 fontSize: "11px",
                 fontStyle: "bold"

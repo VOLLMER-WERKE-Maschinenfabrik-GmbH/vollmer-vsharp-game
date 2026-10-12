@@ -9,6 +9,26 @@ namespace VGame.Domain.Tests;
 public sealed class GameEngineTests
 {
     [TestMethod]
+    public void RegisterTool_ArtworkAtRightStageEdge_AcceptsFloatingPointRounding()
+    {
+        // Prüft den Sägeblatt-Randeintritt, dessen Kantenrechnung einen minimalen Rundungsrest erzeugt.
+        var options = new GameplayOptions();
+        var engine = CreateEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch), options);
+        JoinPlayer(engine);
+        Assert.IsTrue(engine.StartRound("player"));
+        var definition = CreateTool("artwork-saw") with
+        {
+            BoundingWidthNormalized = 0.12,
+            BoundingHeightNormalized = 0.12 * 16 / 9 * 1024 / 1023
+        };
+        var placement = new ToolPlacement(
+            new Point2(options.StageAreaX + options.StageAreaWidth - definition.BoundingWidthNormalized / 2, 0.6),
+            -0.1, 0, 0);
+
+        Assert.IsTrue(engine.RegisterTool(definition, placement));
+    }
+
+    [TestMethod]
     public void JoinClient_LocalPlayerRequest_TakesOverOnlyWhenIdle()
     {
         // Prüft die lokale Rollenübernahme im Leerlauf und den unveränderten Schutz vor Fernspielern.

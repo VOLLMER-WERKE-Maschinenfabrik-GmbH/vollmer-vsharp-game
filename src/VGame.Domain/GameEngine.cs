@@ -738,10 +738,11 @@ public sealed class GameEngine
         var sine = Math.Abs(Math.Sin(angleRadians));
         var halfWidth = (cosine * definition.BoundingWidthNormalized + sine * definition.BoundingHeightNormalized) / 2;
         var halfHeight = (sine * definition.BoundingWidthNormalized + cosine * definition.BoundingHeightNormalized) / 2;
-        if (placement.Center.X - halfWidth < options.StageAreaX
-            || placement.Center.X + halfWidth > options.StageAreaX + options.StageAreaWidth
-            || placement.Center.Y - halfHeight < options.StageAreaY
-            || placement.Center.Y + halfHeight > options.StageAreaY + options.StageAreaHeight)
+        const double boundaryRoundingTolerance = 1e-12;
+        if (placement.Center.X - halfWidth < options.StageAreaX - boundaryRoundingTolerance
+            || placement.Center.X + halfWidth > options.StageAreaX + options.StageAreaWidth + boundaryRoundingTolerance
+            || placement.Center.Y - halfHeight < options.StageAreaY - boundaryRoundingTolerance
+            || placement.Center.Y + halfHeight > options.StageAreaY + options.StageAreaHeight + boundaryRoundingTolerance)
         {
             throw new ArgumentException("Tool placement must stay entirely inside the configured stage area.", nameof(placement));
         }

@@ -8,6 +8,7 @@ namespace VGame.Server.Services;
 public sealed class PrototypeToolSpawnerService(
     GameEngine gameEngine,
     GameplayOptions options,
+    IReadOnlyList<ToolDefinition> artworkTools,
     IHubContext<GameHub, IGameClient> hubContext) : BackgroundService
 {
     private const double ToolWidthNormalized = 0.16;
@@ -34,15 +35,19 @@ public sealed class PrototypeToolSpawnerService(
             }
 
             var spawnSequence = Interlocked.Increment(ref _spawnSequence);
-            var placement = CreatePlacement(snapshot.Tools, spawnSequence);
+            var isSawMode = snapshot.Mode == GameMode.Saw;
+            var candidates = artworkTools.Where(tool => (tool.VisualKind == "saw") == isSawMode).ToArray();
+            var artwork = candidates.Length > 0 ? candidates[(spawnSequence - 1) % candidates.Length] : null;
+            var width = artwork?.BoundingWidthNormalized ?? ToolWidthNormalized;
+            var height = artwork?.BoundingHeightNormalized ?? ToolHeightNormalized;
+            var placement = CreatePlacement(snapshot.Tools, spawnSequence, width, height);
             if (placement is null)
             {
                 continue;
             }
 
             var toolId = $"prototype_{snapshot.RoundId:N}_{spawnSequence:0000}";
-            var isSawMode = snapshot.Mode == GameMode.Saw;
-            var definition = new ToolDefinition(
+            var definition = artwork is not null ? artwork with { ToolId = toolId, ZOrder = spawnSequence } : new ToolDefinition(
                 toolId,
                 spawnSequence,
                 [ShaftZone, CutZone],
@@ -59,14 +64,14 @@ public sealed class PrototypeToolSpawnerService(
         }
     }
 
-    private ToolPlacement? CreatePlacement(IReadOnlyList<ToolSnapshot> activeTools, int spawnSequence)
+    private ToolPlacement? CreatePlacement(IReadOnlyList<ToolSnapshot> activeTools, int spawnSequence, double width, double height)
     {
-        var minimumX = options.StageAreaX + ToolWidthNormalized / 2;
-        var maximumX = options.StageAreaX + options.StageAreaWidth - ToolWidthNormalized / 2;
-        var minimumY = options.StageAreaY + ToolHeightNormalized / 2;
-        var maximumY = options.StageAreaY + options.StageAreaHeight - ToolHeightNormalized / 2;
+        var minimumX = options.StageAreaX + width / 2;
+        var maximumX = options.StageAreaX + options.StageAreaWidth - width / 2;
+        var minimumY = options.StageAreaY + height / 2;
+        var maximumY = options.StageAreaY + options.StageAreaHeight - height / 2;
         var stageArea = options.StageAreaWidth * options.StageAreaHeight;
-        var requestedArea = ToolWidthNormalized * ToolHeightNormalized;
+        var requestedArea = width * height;
         var usedArea = activeTools.Sum(tool => tool.Definition.BoundingWidthNormalized * tool.Definition.BoundingHeightNormalized);
 
         if ((usedArea + requestedArea) / stageArea > options.MaxStageCoverage)
@@ -81,7 +86,7 @@ public sealed class PrototypeToolSpawnerService(
             var center = new Point2(
                 centerX,
                 minimumY + Random.Shared.NextDouble() * (maximumY - minimumY));
-            if (activeTools.Any(tool => IsTooClose(center, tool)))
+            if (activeTools.Any(tool => IsTooClose(center, tool, width, height)))
             {
                 continue;
             }
@@ -94,7 +99,7 @@ public sealed class PrototypeToolSpawnerService(
         return null;
     }
 
-    private bool IsTooClose(Point2 center, ToolSnapshot other)
+    private bool IsTooClose(Point2 center, ToolSnapshot other, double width, double height)
     {
         if (other.Placement is null)
         {
@@ -102,7 +107,7 @@ public sealed class PrototypeToolSpawnerService(
         }
 
         var minimumDistance = options.MinTargetSpacingFactor
-            * Math.Max(ToolWidthNormalized, Math.Max(other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized));
+            * Math.Max(Math.Max(width, height), Math.Max(other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized));
         var distanceX = center.X - other.Placement.Center.X;
         var distanceY = center.Y - other.Placement.Center.Y;
         return distanceX * distanceX + distanceY * distanceY < minimumDistance * minimumDistance;
