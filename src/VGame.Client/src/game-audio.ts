@@ -1,5 +1,6 @@
 type AudioPool = { poolId: string; variants: string[]; volumeProfile: string; fallback: string; bagRule: string };
 type SoundChannel = { source: AudioBufferSourceNode | OscillatorNode; gain: GainNode; voice: boolean };
+type MusicTrack = { file: string; startSeconds: number; volume: number };
 
 export class ShuffleBag {
     private pending: string[] = [];
@@ -41,6 +42,11 @@ export class GameAudio {
     private pendingVoice?: { pool: string; createdAt: number; roundId: string };
     private voiceTimer?: ReturnType<typeof setTimeout>;
     private decodePromise?: Promise<void>;
+    private musicTrack?: MusicTrack;
+    private musicSource?: AudioBufferSourceNode;
+    private musicGain?: GainNode;
+    private duckTimer?: ReturnType<typeof setTimeout>;
+    private musicStartedRound: string | null = null;
     private readonly preloadPromise: Promise<void>;
 
     constructor(private readonly report: (message: string) => void) {
@@ -51,12 +57,14 @@ export class GameAudio {
         try {
             const response = await fetch("/api/game-audio", { cache: "no-store", signal: AbortSignal.timeout(5000) });
             if (!response.ok) throw new Error();
-            const catalog = await response.json() as { pools: AudioPool[] };
+            const catalog = await response.json() as { pools: AudioPool[]; music: MusicTrack | null };
+            this.musicTrack = catalog.music ?? undefined;
             for (const pool of catalog.pools) {
                 this.pools.set(pool.poolId, pool);
                 this.bags.set(pool.poolId, new ShuffleBag(pool.variants));
             }
             const files = [...new Set(catalog.pools.flatMap(pool => pool.variants))];
+            if (this.musicTrack) files.push(this.musicTrack.file);
             await Promise.all(files.map(async filename => {
                 try {
                     const audio = await fetch(`/Assets/audio/${filename}`, { signal: AbortSignal.timeout(5000) });
@@ -84,6 +92,7 @@ export class GameAudio {
             this.applyVolume();
             if (!this.decodePromise) this.decodePromise = this.decode();
             await this.decodePromise;
+            this.syncMusic();
             if (this.context.state !== "running") this.report("Audio ist durch den Browser gesperrt. Erneut Start drücken.");
         } catch { this.report("Audio kann nicht gestartet werden. Das Spiel bleibt spielbar."); }
     }
@@ -99,7 +108,8 @@ export class GameAudio {
     setVolume(volume: number): void {
         this.volume = Math.max(0, Math.min(1, volume));
         this.applyVolume();
-        if (this.volume === 0) this.stopAll();
+        if (this.volume === 0) this.stopEffects();
+        this.syncMusic();
     }
 
     setRound(roundId: string | null, active: boolean, playing: boolean): void {
@@ -109,6 +119,7 @@ export class GameAudio {
         this.playing = playing;
         if (!active || !playing) this.stopAll();
         this.applyVolume();
+        this.syncMusic();
     }
 
     play(eventId: string, roundId: string, voicePool: string | null, effectPool: string): void {
@@ -159,7 +170,7 @@ export class GameAudio {
         if (!buffer && !replacementTone) return;
         this.stopChannel(voice ? this.voice : this.effect, voice ? 0.015 : 0.003);
         const gain = this.context.createGain();
-        gain.gain.value = voice ? 0.5 : 0.25;
+        gain.gain.value = voice ? 0.5 : 0.2;
         gain.connect(this.master);
         let source: AudioBufferSourceNode | OscillatorNode;
         if (buffer) {
@@ -184,12 +195,14 @@ export class GameAudio {
             source.disconnect(); gain.disconnect();
             if (this.voice === channel) this.voice = undefined;
             if (this.effect === channel) this.effect = undefined;
+            this.restoreMusic();
         };
         const delay = voice ? 0.015 : 0.003;
         const start = this.context.currentTime + delay;
         source.start(start);
         if (buffer) source.stop(start + buffer.duration);
         else source.stop(start + 0.075);
+        this.duckMusic();
     }
 
     private stopChannel(channel: SoundChannel | undefined, fade: number): void {
@@ -207,12 +220,67 @@ export class GameAudio {
         if (this.context && this.master) this.master.gain.setValueAtTime(this.active ? this.volume : 0, this.context.currentTime);
     }
 
-    stopAll(): void {
+    private stopEffects(): void {
         clearTimeout(this.voiceTimer);
         this.pendingVoice = undefined;
         for (const channel of this.channels) this.stopChannel(channel, 0);
         this.voice = this.effect = undefined;
     }
+
+    private syncMusic(): void {
+        if (!this.active || !this.playing || !this.roundId) { this.stopMusic(); return; }
+        if (this.musicSource || this.musicStartedRound === this.roundId || this.context?.state !== "running" || !this.master || !this.musicTrack) return;
+        const buffer = this.buffers.get(this.musicTrack.file);
+        if (!buffer) return;
+        const start = this.musicTrack.startSeconds;
+        if (buffer.duration <= start) { this.report("Hintergrundmusik ist kürzer als der Startpunkt 0:15."); return; }
+        const source = this.context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        source.loopStart = start;
+        source.loopEnd = buffer.duration;
+        const gain = this.context.createGain();
+        gain.gain.value = this.musicTrack.volume;
+        source.connect(gain).connect(this.master);
+        this.musicSource = source;
+        this.musicGain = gain;
+        this.musicStartedRound = this.roundId;
+        source.onended = () => { source.disconnect(); gain.disconnect(); };
+        source.start(this.context.currentTime, start);
+    }
+
+    private duckMusic(): void {
+        clearTimeout(this.duckTimer);
+        if (!this.context || !this.musicGain || !this.musicTrack) return;
+        const now = this.context.currentTime;
+        this.musicGain.gain.cancelScheduledValues(now);
+        this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
+        this.musicGain.gain.linearRampToValueAtTime(this.musicTrack.volume * Math.pow(10, -6 / 20), now + 0.08);
+    }
+
+    private restoreMusic(): void {
+        if (this.effect || this.voice || !this.musicSource) return;
+        clearTimeout(this.duckTimer);
+        this.duckTimer = setTimeout(() => {
+            if (this.effect || this.voice || !this.context || !this.musicGain || !this.musicTrack) return;
+            const now = this.context.currentTime;
+            this.musicGain.gain.cancelScheduledValues(now);
+            this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
+            this.musicGain.gain.linearRampToValueAtTime(this.musicTrack.volume, now + 0.25);
+        }, 120);
+    }
+
+    private stopMusic(): void {
+        clearTimeout(this.duckTimer);
+        if (this.musicSource) {
+            try { this.musicSource.stop(); } catch {}
+        }
+        this.musicSource = undefined;
+        this.musicGain = undefined;
+        this.musicStartedRound = null;
+    }
+
+    stopAll(): void { this.stopEffects(); this.stopMusic(); }
 
     destroy(): void { this.stopAll(); void this.context?.close(); }
 }

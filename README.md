@@ -8,6 +8,8 @@ Das Repository enthält den lokalen ASP.NET-Core-Host, die Blazor-Betriebshülle
 
 ## Spielstand zu 00001/AP-04
 
+Hintergrundmusik ist als `Assets/audio/music/bgm.mp3` eingebunden, bytegleich zur gelieferten Datei. Beim Rundenstart wird das Intro übersprungen und ab 0:15 bis Dateiende (2:18) geloopt. Musik ist auf -16 dB eingestellt, Kurzfeedback-Effekte auf Gain 0,2 (etwa -14 dB), Stimmen bleiben unverändert. Effekte senken Musik um 6 dB über 80 ms ab; nach 120 ms Haltezeit wird über 250 ms zurückgeblendet. F6 steuert alle Busse, Stumm lässt die Musik lautlos weiterlaufen; Rundenende und Rollenverlust stoppen sie. Eine endgültige Hör-/Loopfreigabe sowie UI-/Jingledateien und vollständige Mischer-/Ausschnittkonfiguration stehen aus.
+
 Die Werkzeuge tragen vier doppelt große Comic-Mimikzustände passend zu stumpf, Schliff, scharf und defekt. Gesichter werden dekorativ über dem Körper gezeichnet und dürfen über die Werkzeugkontur hinausragen, ohne Trefferzonen zu ändern; ausschließlich die Schneidenzustände bleiben maskiert. Auf Nutzerfreigabe wurde die Wiedergabe der gelieferten 28 Stimmen-/Effektdateien aus AP-05 vorgezogen. Nach bewusstem Start werden Clips vorab geladen/dekodiert und nur beim aktiven Spieler nach bestätigter Aktion abgespielt. Ein gemeinsamer Web-Audio-Mischer ersetzt den ungenutzten Phaser-Audiomanager; Watcher bleiben ohne Audiokontext und Audioabrufe.
 
 Ein Klick ins Leere (`miss`) startet keine Werkstückstimme und keinen Schrei, sondern nur den Laser-/Schleifeffekt. Vorgemerkte Stimmen werden verworfen; der Punkteabzug bleibt erhalten. Fehlerstimmen werden nur durch tatsächliche Fehlbearbeitung beziehungsweise Schafttreffer ausgelöst.

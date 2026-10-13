@@ -131,7 +131,10 @@ app.MapGet("/api/game-audio", (HttpContext context, ILogger<Program> logger) =>
                 fallback = pools.Single(candidate => candidate.PoolId == fallback).Fallback;
             }
         }
-        return Results.Ok(new { pools });
+        var musicFile = "music/bgm.mp3";
+        var music = File.Exists(Path.Combine(assetDirectory, "audio", musicFile))
+            ? new { file = musicFile, startSeconds = 15, volume = Math.Pow(10, -16d / 20) } : null;
+        return Results.Ok(new { pools, music });
     }
     catch (Exception exception) when (exception is IOException or JsonException or InvalidOperationException)
     {
