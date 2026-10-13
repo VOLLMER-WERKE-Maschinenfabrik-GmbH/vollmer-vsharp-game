@@ -303,7 +303,8 @@ public sealed class GameEngine
                 _score,
                 _combo,
                 newToolState,
-                _timeProvider.GetUtcNow());
+                _timeProvider.GetUtcNow(),
+                GetFeedbackPoint(request.Gesture.Points, contact));
 
             CacheResolution(commandKey, resolution);
             _lastCommandSequence[request.ClientInstanceId] = request.CommandSequence;
@@ -470,8 +471,20 @@ public sealed class GameEngine
             _score,
             _combo,
             _roleVersion,
-            tools);
+                tools,
+                new GameStageArea(_options.StageAreaX, _options.StageAreaY, _options.StageAreaWidth, _options.StageAreaHeight));
     }
+
+            private static Point2 GetFeedbackPoint(IReadOnlyList<Point2> points, ZoneContact? contact)
+            {
+            if (contact is null) return points[^1];
+            if (points.Count == 1) return points[0];
+            var position = Math.Clamp(contact.PathProgress, 0, 1) * (points.Count - 1);
+            var index = Math.Min((int)position, points.Count - 2);
+            var progress = position - index;
+            return new Point2(points[index].X + (points[index + 1].X - points[index].X) * progress,
+                points[index].Y + (points[index + 1].Y - points[index].Y) * progress);
+            }
 
     private bool IsValidGesture(GesturePayload? gesture, out string rejectionReason)
     {

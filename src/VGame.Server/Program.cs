@@ -49,8 +49,8 @@ builder.Services.AddSingleton<IClientOriginPolicy, ClientOriginPolicy>();
 builder.Services.AddSignalR()
     .AddJsonProtocol(options =>
     {
-        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
         options.PayloadSerializerOptions.Converters.Add(new OutcomeJsonConverter());
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     });
 builder.Services.AddHostedService<RoundClockService>();
 builder.Services.AddHostedService<PrototypeToolSpawnerService>();

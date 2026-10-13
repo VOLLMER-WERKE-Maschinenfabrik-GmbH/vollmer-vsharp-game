@@ -9,6 +9,32 @@ namespace VGame.Domain.Tests;
 public sealed class GameEngineTests
 {
     [TestMethod]
+    public void GetSnapshot_ContainsConfiguredAuthoritativeStageArea()
+    {
+        // Prüft gemeinsame Eingabe- und Spawn-Grenzen statt einer abweichenden hartcodierten Clientfläche.
+        var options = new GameplayOptions { StageAreaX = 0.1, StageAreaY = 0.1, StageAreaWidth = 0.8, StageAreaHeight = 0.7 };
+        var engine = CreateEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch), options);
+        Assert.AreEqual(new GameStageArea(0.1, 0.1, 0.8, 0.7), engine.GetSnapshot().StageArea);
+    }
+
+    [TestMethod]
+    public void ResolveAction_BroadcastsConfirmedFeedbackPointForPlayerAndWatcher()
+    {
+        // Prüft den bestätigten Tap-/Fehlpunkt im gemeinsamen Ereignis statt einer geratenen Watcher-Bildmitte.
+        var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(timeProvider);
+        Assert.IsTrue(engine.RegisterTool(CreateTool("tool-1")));
+        var point = new Point2(0.65, 0.5);
+        var result = engine.ResolveAction(CreateTapRequest("player", engine.GetSnapshot().RoundId!.Value, 1, point, timeProvider.GetUtcNow()));
+        Assert.AreEqual(Outcome.Success, result.Resolution!.Outcome);
+        Assert.AreEqual(point, result.Resolution.FeedbackPoint);
+        var missPoint = new Point2(0.01, 0.01);
+        var miss = engine.ResolveAction(CreateTapRequest("player", engine.GetSnapshot().RoundId!.Value, 2, missPoint, timeProvider.GetUtcNow()));
+        Assert.AreEqual(Outcome.Miss, miss.Resolution!.Outcome);
+        Assert.AreEqual(missPoint, miss.Resolution.FeedbackPoint);
+    }
+
+    [TestMethod]
     public void RegisterTool_ArtworkAtRightStageEdge_AcceptsFloatingPointRounding()
     {
         // Prüft den Sägeblatt-Randeintritt, dessen Kantenrechnung einen minimalen Rundungsrest erzeugt.

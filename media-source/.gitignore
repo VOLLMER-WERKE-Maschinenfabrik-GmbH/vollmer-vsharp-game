@@ -1,5 +1,6 @@
-# Nur strukturierte Autorenquellen werden versioniert; Rohbilder und Master bleiben ausgeschlossen.
+# Autorenquellen und Aufbereitungscode werden versioniert; Rohbilder und Master bleiben ausgeschlossen.
 !/.gitignore
+!/prepare-artwork.mjs
 !/assets/
 !/plan/
 !/zone-authoring/

@@ -8,6 +8,37 @@ namespace VGame.Domain.Tests;
 public sealed class HitZoneClassifierTests
 {
     [TestMethod]
+    public void FindFirstContact_SwipeStartsInSmallCut_IsNotStolenByShaftTolerance()
+    {
+        // Prüft einen bereits in der Säge-Schneide begonnenen Swipe trotz toleranznahen Blattkörpers.
+        var definition = CreateTool("small-saw", 0,
+            Rectangle(0.1, 0.1, 0.9, 0.84, "shaft", HitZoneRole.Shaft),
+            Rectangle(0.1, 0.84, 0.9, 0.95, "cut", HitZoneRole.Cut)) with { BoundingWidthNormalized = 0.12, BoundingHeightNormalized = 0.214 };
+        var placement = new ToolPlacement(new Point2(0.5, 0.5), 0, 0, 0);
+        var vertical = 0.5 + (0.9 - 0.5) * definition.BoundingHeightNormalized;
+        var contact = HitZoneClassifier.FindFirstContact([new ToolSnapshot(definition, ToolState.Dull, placement)],
+            [new Point2(0.5 + (0.3 - 0.5) * definition.BoundingWidthNormalized, vertical),
+                new Point2(0.5 + (0.7 - 0.5) * definition.BoundingWidthNormalized, vertical)], 0.02);
+        Assert.IsNotNull(contact);
+        Assert.AreEqual(HitZoneRole.Cut, contact.HitZone.Role);
+    }
+
+    [TestMethod]
+    public void FindFirstContact_TapInsideSmallCut_IsNotStolenByShaftTolerance()
+    {
+        // Prüft einen tatsächlichen Schneidentreffer bei Prototypgröße trotz näher als 0,02 liegendem Schaft.
+        var definition = new ToolDefinition("small-drill", 0,
+            [Rectangle(0.0625, 0.3, 0.832, 0.7, "shaft", HitZoneRole.Shaft),
+                Rectangle(0.832, 0.35, 0.938, 0.7, "cut", HitZoneRole.Cut)],
+            0, 0.2, 0.2 * 16 / 9 * 240 / 1024);
+        var placement = new ToolPlacement(new Point2(0.5, 0.5), 0, 0, 0);
+        var contact = HitZoneClassifier.FindFirstContact([new ToolSnapshot(definition, ToolState.Dull, placement)],
+            [new Point2(0.5 + (0.9 - 0.5) * definition.BoundingWidthNormalized, 0.5)], 0.02);
+        Assert.IsNotNull(contact);
+        Assert.AreEqual(HitZoneRole.Cut, contact.HitZone.Role);
+    }
+
+    [TestMethod]
     public void FindFirstContact_SharedZoneBoundary_PrefersShaft()
     {
         // Prüft die verbindliche Vorrangregel an der gemeinsamen cut/shaft-Grenze.
@@ -22,6 +53,18 @@ public sealed class HitZoneClassifierTests
             [new Point2(0.5, 0.5)],
             0);
 
+        Assert.IsNotNull(contact);
+        Assert.AreEqual(HitZoneRole.Shaft, contact.HitZone.Role);
+    }
+
+    [TestMethod]
+    public void FindFirstContact_TapSharedBoundary_WithToleranceKeepsShaftPriority()
+    {
+        // Prüft, dass die bevorzugte direkte Tapwertung den verbindlichen Schaftvorrang an der Grenze nicht verändert.
+        var definition = CreateTool("small-tool", 0,
+            Rectangle(0.2, 0.2, 0.5, 0.8, "shaft", HitZoneRole.Shaft),
+            Rectangle(0.5, 0.2, 0.8, 0.8, "cut", HitZoneRole.Cut)) with { BoundingWidthNormalized = 0.2, BoundingHeightNormalized = 0.08 };
+        var contact = HitZoneClassifier.FindFirstContact([new ToolSnapshot(definition, ToolState.Dull, new(new(0.5, 0.5), 0, 0, 0))], [new Point2(0.5, 0.5)], 0.02);
         Assert.IsNotNull(contact);
         Assert.AreEqual(HitZoneRole.Shaft, contact.HitZone.Role);
     }

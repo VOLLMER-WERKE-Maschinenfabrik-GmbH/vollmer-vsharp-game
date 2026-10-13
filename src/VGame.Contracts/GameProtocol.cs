@@ -113,7 +113,8 @@ public sealed record ActionResolved(
     int Score,
     int Combo,
     ToolState? ToolState,
-    DateTimeOffset ServerTimestamp);
+    DateTimeOffset ServerTimestamp,
+    Point2? FeedbackPoint = null);
 
 public sealed record ActionCommandResult(
     bool Accepted,
@@ -131,4 +132,7 @@ public sealed record GameSnapshot(
     int Score,
     int Combo,
     long RoleVersion,
-    IReadOnlyList<ToolSnapshot> Tools);
+    IReadOnlyList<ToolSnapshot> Tools,
+    GameStageArea? StageArea = null);
+
+public sealed record GameStageArea(double Left, double Top, double Width, double Height);

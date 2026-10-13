@@ -13,6 +13,10 @@ using VGame.Contracts;
 using VGame.Server.Security;
 using VGame.Server.Services;
 using System.Net.Http.Json;
+#if DEBUG
+using SkiaSharp;
+using VGame.Tools.Manifest;
+#endif
 
 namespace VGame.Server.Tests;
 
@@ -21,6 +25,48 @@ namespace VGame.Server.Tests;
 public sealed class GameHubIntegrationTests
 {
     public TestContext TestContext { get; set; }
+
+    [TestMethod]
+    [Timeout(15000, CooperativeCancellation = true)]
+    public async Task ActionResolved_WireOutcomeUsesCanonicalSnakeCaseForShaftHit()
+    {
+        // Prüft den tatsächlichen SignalR-JSON-Vertrag statt einer durch Enum-Konverter verdeckten Zeichenkettenabweichung.
+        await using var factory = CreateFactory();
+        await using var connection = CreateConnection(factory);
+        var notification = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On<JsonElement>("ActionResolved", action => notification.TrySetResult(action));
+        await connection.StartAsync(TestContext.CancellationToken);
+        await connection.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("wire-player", ClientRole.Player), TestContext.CancellationToken);
+        Assert.IsTrue(await connection.InvokeAsync<bool>("StartRound", TestContext.CancellationToken));
+        var engine = factory.Services.GetRequiredService<VGame.Domain.GameEngine>();
+        Assert.IsTrue(engine.RegisterTool(CreateTool("wire-shaft")));
+        var request = new ActionRequested("wire-player", 1, engine.GetSnapshot().RoundId!.Value, "wire-shaft", DateTimeOffset.UtcNow,
+            new GesturePayload(GestureKind.Tap, [new Point2(0.3, 0.5)], 0, 50));
+        await connection.InvokeAsync<ActionCommandResult>("SubmitAction", request, TestContext.CancellationToken);
+        var action = await notification.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreEqual("shaft_hit", action.GetProperty("outcome").GetString());
+    }
+
+#if DEBUG
+    [TestMethod]
+    [DataRow("tool_0002")]
+    [DataRow("tool_0006")]
+    [DataRow("tool_0010")]
+    public async Task ArtworkCatalog_CoversEveryOpaquePixelOfLoadedGameImage(string assetId)
+    {
+        // Prüft Bild und tatsächlich geladenen Spielkatalog gemeinsam auf vollständige Silhouettenabdeckung.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        var definition = Assert.ContainsSingle(factory.Services.GetRequiredService<IReadOnlyList<ToolDefinition>>().Where(tool => tool.AssetId == assetId));
+        using var bitmap = SKBitmap.Decode(await client.GetByteArrayAsync($"/Assets/images/tools/{assetId}.webp", TestContext.CancellationToken));
+        Assert.IsNotNull(bitmap);
+        var zones = new AssetZoneAuthoring { AssetId = assetId, Canvas = new() { Width = bitmap.Width, Height = bitmap.Height }, Pivot = new(0.5, 0.5),
+            HitZones = definition.HitZones.Select(zone => new ManifestHitZone { ZoneId = zone.ZoneId, Role = zone.Role == HitZoneRole.Cut ? "cut" : "shaft",
+                Points = zone.Points.Select(point => new[] { point.X, point.Y }).ToArray() }).ToArray() };
+        var metadata = new AssetMetadata { AssetId = assetId, Category = "tool-image", LicenseStatus = "test", Source = "test-fixture", CreatedUtc = DateTimeOffset.UnixEpoch };
+        AssetValidator.ValidateZones(JsonSerializer.SerializeToElement(zones, ManifestInputs.JsonOptions), metadata, bitmap);
+    }
+#endif
 
     [TestMethod]
     [DataRow("/play")]
@@ -434,8 +480,8 @@ public sealed class GameHubIntegrationTests
             })
             .AddJsonProtocol(options =>
             {
-                options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
                 options.PayloadSerializerOptions.Converters.Add(new OutcomeJsonConverter());
+                options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             })
             .Build();
     }

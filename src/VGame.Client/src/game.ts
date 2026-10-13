@@ -42,6 +42,7 @@ type GameSnapshot = {
     combo: number;
     roleVersion: number;
     tools: ToolSnapshot[];
+    stageArea?: { left: number; top: number; width: number; height: number };
 };
 type JoinResponse = {
     clientInstanceId: string;
@@ -58,13 +59,14 @@ type ActionResolved = {
     scoreDelta: number;
     score: number;
     combo: number;
+    feedbackPoint?: Point2 | null;
 };
 type GestureSample = { x: number; y: number; elapsedMs: number };
 type ActiveGesture = { startedAt: number; samples: GestureSample[] };
 
 const gameWidth = 1280;
 const gameHeight = 720;
-const stageArea = { x: 64, y: 168, width: 1152, height: 454 };
+const stageArea = { x: 64, y: 201.6, width: 1152, height: 460.8 };
 
 class WorkshopScene extends Phaser.Scene {
     private readonly requestedRole: ClientRole;
@@ -80,6 +82,9 @@ class WorkshopScene extends Phaser.Scene {
     private targetContainers = new Map<string, Phaser.GameObjects.Container>();
     private titleText!: Phaser.GameObjects.Text;
     private touchFeedback?: Phaser.GameObjects.Arc;
+    private inputArea = { ...stageArea };
+    private gestureTrail!: Phaser.GameObjects.Graphics;
+    private feedbackObjects = new Set<Phaser.GameObjects.GameObject>();
 
     constructor(requestedRole: ClientRole, private readonly shell: MachineShell) {
         super({ key: `workshop-${requestedRole}` });
@@ -102,6 +107,7 @@ class WorkshopScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor("#292f31");
         this.createBackdrop();
         this.createInterface();
+        this.gestureTrail = this.add.graphics().setDepth(75);
         this.registerInput();
         this.shell.bind(command => {
             if (command === "start") void this.startRound();
@@ -159,17 +165,24 @@ class WorkshopScene extends Phaser.Scene {
             align: "center",
             backgroundColor: "#763f16",
             padding: { x: 16, y: 12 }
-        }).setOrigin(0.5).setDepth(25);
+        }).setOrigin(0.5).setDepth(90);
 
     }
 
     private registerInput(): void {
+        const cancelGesture = () => { this.activeGesture = null; this.gestureTrail.clear(); };
+        this.input.on("pointerupoutside", cancelGesture);
+        this.game.canvas.addEventListener("pointercancel", cancelGesture);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.game.canvas.removeEventListener("pointercancel", cancelGesture));
         this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-            if (this.role !== "player" || this.snapshot?.phase !== "playing" || pointer.worldX < stageArea.x || pointer.worldX > stageArea.x + stageArea.width || pointer.worldY < stageArea.y || pointer.worldY > stageArea.y + stageArea.height) {
+            if (this.role !== "player" || this.snapshot?.phase !== "playing" || pointer.worldX < this.inputArea.x || pointer.worldX > this.inputArea.x + this.inputArea.width || pointer.worldY < this.inputArea.y || pointer.worldY > this.inputArea.y + this.inputArea.height) {
                 return;
             }
 
             const now = performance.now();
+            this.gestureTrail.clear();
+            const impulse = this.trackFeedback(this.add.circle(pointer.worldX, pointer.worldY, 10, 0x00bbfc, 0.35).setDepth(76));
+            this.tweens.add({ targets: impulse, alpha: 0, scale: 1.8, duration: 150, onComplete: () => impulse.destroy() });
             this.activeGesture = {
                 startedAt: now,
                 samples: [this.toNormalizedPoint(pointer.worldX, pointer.worldY, now)]
@@ -177,16 +190,21 @@ class WorkshopScene extends Phaser.Scene {
         });
 
         this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-            if (this.activeGesture === null || !pointer.isDown || this.activeGesture.samples.length >= 32) {
+            if (this.activeGesture === null || !pointer.isDown || this.activeGesture.samples.length >= 31) {
                 return;
             }
 
-            this.activeGesture.samples.push(this.toNormalizedPoint(pointer.worldX, pointer.worldY, performance.now()));
+            const previous = this.activeGesture.samples.at(-1)!;
+            const point = this.toNormalizedPoint(pointer.worldX, pointer.worldY, performance.now());
+            this.gestureTrail.lineStyle(3, this.snapshot?.mode === "saw" ? 0xffc653 : 0x00bbfc, 0.9)
+                .lineBetween(previous.x * gameWidth, previous.y * gameHeight, point.x * gameWidth, point.y * gameHeight);
+            this.activeGesture.samples.push(point);
         });
 
         this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
             const gesture = this.activeGesture;
             this.activeGesture = null;
+            this.gestureTrail.clear();
             if (gesture === null || this.snapshot?.phase !== "playing") {
                 return;
             }
@@ -232,7 +250,20 @@ class WorkshopScene extends Phaser.Scene {
         this.role = this.requestedRole === "player" && snapshot.activeClientId === this.clientInstanceId
             ? "player"
             : "watcher";
+        if (this.snapshot?.roundId !== snapshot.roundId || snapshot.phase !== "playing" || this.role !== "player") {
+            this.activeGesture = null;
+            this.gestureTrail.clear();
+        }
+        if (this.snapshot?.roundId !== snapshot.roundId || snapshot.phase !== "playing") {
+            for (const effect of this.feedbackObjects) { this.tweens.killTweensOf(effect); effect.destroy(); }
+            this.feedbackObjects.clear();
+            this.touchFeedback = undefined;
+        }
         this.snapshot = snapshot;
+        if (snapshot.stageArea) {
+            this.inputArea = { x: snapshot.stageArea.left * gameWidth, y: snapshot.stageArea.top * gameHeight,
+                width: snapshot.stageArea.width * gameWidth, height: snapshot.stageArea.height * gameHeight };
+        }
         this.snapshotReceivedAt = performance.now();
         this.syncTargets(snapshot.tools);
 
@@ -300,6 +331,22 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     private drawTool(container: Phaser.GameObjects.Container, tool: ToolSnapshot): void {
+        const previous = container.getData("authoritative-state") as ToolState | undefined;
+        if (previous === "dull" && (tool.state === "sharp" || tool.state === "failed")) {
+            const duration = tool.state === "sharp" ? 300 : 150;
+            container.setData("transition-until", performance.now() + duration);
+            this.time.delayedCall(duration, () => {
+                if (!container.active) return;
+                container.setData("transition-until", 0);
+                const latest = this.snapshot?.tools.find(target => target.definition.toolId === tool.definition.toolId);
+                if (latest) this.drawTool(container, latest);
+            });
+        }
+        container.setData("authoritative-state", tool.state);
+        const visualState: ToolState = (tool.state === "sharp" || tool.state === "failed")
+            && Number(container.getData("transition-until") ?? 0) > performance.now() ? "inProgress" : tool.state;
+        if (container.getData("rendered-state") === visualState) return;
+        container.setData("rendered-state", visualState);
         const graphics = container.getData("graphics") as Phaser.GameObjects.Graphics;
         const width = tool.definition.boundingWidthNormalized * gameWidth;
         const height = tool.definition.boundingHeightNormalized * gameHeight;
@@ -309,13 +356,12 @@ class WorkshopScene extends Phaser.Scene {
             sharp: { shaft: 0x427b4a, cut: 0xb1e05b, edge: 0x263237 },
             failed: { shaft: 0x672f32, cut: 0xeb625e, edge: 0x321e20 }
         };
-        const colors = stateColors[tool.state];
+        const colors = stateColors[visualState];
         const artwork = container.getData("artwork") as Phaser.GameObjects.Image | undefined;
         graphics.clear();
 
         if (artwork) {
-            const tint: Record<ToolState, number> = { dull: 0xffffff, inProgress: 0xffd27a, sharp: 0xb6ee8b, failed: 0xff7777 };
-            artwork.setTint(tint[tool.state]);
+            artwork.clearTint().setTexture(this.stateTexture(tool.definition, visualState)).setDisplaySize(width, height);
         }
         for (const zone of artwork ? [] : tool.definition.hitZones) {
             const polygon = zone.points.map(point => ({
@@ -341,20 +387,65 @@ class WorkshopScene extends Phaser.Scene {
             graphics.fillStyle(0x52dcf5, 1).fillCircle(width * 0.34, -height * 0.15, 5);
         }
 
-        const label = tool.state === "dull" ? "STUMPF" : tool.state === "inProgress" ? "SCHLIFF" : tool.state === "sharp" ? "SCHARF" : "DEFEKT";
+        const label = visualState === "dull" ? "STUMPF" : visualState === "inProgress" ? "SCHLIFF" : visualState === "sharp" ? "SCHARF" : "DEFEKT";
         const stateLabel = container.getByName("state-label") as Phaser.GameObjects.Text | null;
         if (stateLabel === null) {
             container.add(this.add.text(0, height * 0.5 + 3, label, {
                 color: "#202426",
                 backgroundColor: "#ffdda6",
                 padding: { x: 4, y: 2 },
-                fontFamily: "Segoe UI, sans-serif",
+                fontFamily: "Bahnschrift, sans-serif",
                 fontSize: "11px",
                 fontStyle: "bold"
             }).setOrigin(0.5).setName("state-label"));
         } else {
             stateLabel.setText(label);
         }
+    }
+
+    private stateTexture(definition: ToolDefinition, state: ToolState): string {
+        const assetId = definition.assetId!;
+        const key = `${assetId}-state-${state}`;
+        if (this.textures.exists(key)) return key;
+        const source = this.textures.get(assetId).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+        const texture = this.textures.createCanvas(key, source.width, source.height);
+        if (!texture) return assetId;
+        const context = texture.context;
+        context.drawImage(source, 0, 0);
+        const polygon = (zone: HitZone) => {
+            const path = new Path2D();
+            for (const [index, point] of zone.points.entries()) {
+                if (index === 0) path.moveTo(point.x * source.width, point.y * source.height);
+                else path.lineTo(point.x * source.width, point.y * source.height);
+            }
+            path.closePath();
+            return path;
+        };
+        const cut = definition.hitZones.find(zone => zone.role === "cut");
+        if (cut) {
+            context.save();
+            context.clip(polygon(cut));
+            const withoutShaft = new Path2D();
+            withoutShaft.rect(0, 0, source.width, source.height);
+            for (const shaft of definition.hitZones.filter(zone => zone.role === "shaft")) withoutShaft.addPath(polygon(shaft));
+            context.clip(withoutShaft, "evenodd");
+            context.globalCompositeOperation = "source-atop";
+            const fills: Record<ToolState, string> = { dull: "rgba(66,79,85,0.50)", inProgress: "rgba(255,185,35,0.72)",
+                sharp: "rgba(148,226,0,0.55)", failed: "rgba(235,42,53,0.78)" };
+            context.fillStyle = fills[state];
+            context.fillRect(0, 0, source.width, source.height);
+            context.strokeStyle = state === "failed" ? "rgba(35,18,22,0.9)" : state === "dull" ? "rgba(32,43,48,0.7)" : "rgba(255,255,232,0.92)";
+            context.lineWidth = Math.max(2, source.width / (state === "failed" ? 140 : 250));
+            for (let offset = -source.height; offset < source.width; offset += Math.max(18, source.width / 28)) {
+                context.beginPath();
+                context.moveTo(offset, 0);
+                context.lineTo(offset + source.height, source.height);
+                context.stroke();
+            }
+            context.restore();
+        }
+        texture.refresh();
+        return key;
     }
 
     private async selectMode(mode: GameMode): Promise<void> {
@@ -428,22 +519,38 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     private showActionFeedback(action: ActionResolved): void {
+        if (action.roundId !== this.snapshot?.roundId) return;
         if (this.touchFeedback !== undefined) {
             this.touchFeedback.destroy();
         }
 
         const color = action.outcome === "success" ? 0x94e200 : 0xfe0e26;
-        const feedbackPoint = this.lastGesturePoint ?? { x: 0.5, y: 0.5 };
+        const target = this.snapshot?.tools.find(tool => tool.definition.toolId === action.toolId);
+        const feedbackPoint = action.feedbackPoint ?? this.lastGesturePoint ?? target?.placement?.center ?? { x: 0.5, y: 0.5 };
         this.shell.animateAction(feedbackPoint, action.outcome === "success");
-        this.touchFeedback = this.add.circle(feedbackPoint.x * gameWidth, feedbackPoint.y * gameHeight, 26, color, 0.55)
-            .setDepth(80);
+        const feedback = this.trackFeedback(this.add.circle(feedbackPoint.x * gameWidth, feedbackPoint.y * gameHeight, 26, color, 0.55)
+            .setDepth(80));
+        this.touchFeedback = feedback;
         this.tweens.add({
-            targets: this.touchFeedback,
+            targets: feedback,
             alpha: 0,
             scale: 2.4,
             duration: 260,
-            onComplete: () => this.touchFeedback?.destroy()
+            onComplete: () => feedback.destroy()
         });
+        const labels: Record<Outcome, string> = { success: `+${action.scoreDelta}`, shaft_hit: `SCHAFT ${action.scoreDelta}`,
+            wrong_sharpening: `FALSCH ${action.scoreDelta}`, miss: `DANEBEN ${action.scoreDelta}` };
+        const text = this.trackFeedback(this.add.text(Phaser.Math.Clamp(feedbackPoint.x * gameWidth, 90, gameWidth - 90),
+            Phaser.Math.Clamp(feedbackPoint.y * gameHeight - 30, 24, gameHeight - 30), labels[action.outcome],
+            { fontFamily: "Bahnschrift, sans-serif", fontSize: "22px", fontStyle: "bold", color: action.outcome === "success" ? "#b6ff72" : "#ff8894",
+                stroke: "#172225", strokeThickness: 4 }).setOrigin(0.5).setDepth(81));
+        this.tweens.add({ targets: text, y: text.y - 18, alpha: 0, duration: 550, onComplete: () => text.destroy() });
+    }
+
+    private trackFeedback<T extends Phaser.GameObjects.GameObject>(effect: T): T {
+        this.feedbackObjects.add(effect);
+        effect.once(Phaser.GameObjects.Events.DESTROY, () => this.feedbackObjects.delete(effect));
+        return effect;
     }
 
     private toNormalizedPoint(x: number, y: number, elapsedMs: number): GestureSample {
@@ -470,7 +577,7 @@ class WorkshopScene extends Phaser.Scene {
 
 export function createGame(role: ClientRole): Phaser.Game {
     const shell = new MachineShell(role === "watcher");
-    return new Phaser.Game({
+    const game = new Phaser.Game({
         type: Phaser.AUTO,
         parent: "game-stage",
         width: gameWidth,
@@ -482,4 +589,12 @@ export function createGame(role: ClientRole): Phaser.Game {
         },
         scene: [new WorkshopScene(role, shell)]
     });
+    const stage = document.getElementById("game-stage")!;
+    const observer = new ResizeObserver(entries => {
+        const bounds = entries[0].contentRect;
+        if (game.scale && bounds.width > 0 && bounds.height > 0) game.scale.setParentSize(bounds.width, bounds.height);
+    });
+    observer.observe(stage);
+    game.events.once(Phaser.Core.Events.DESTROY, () => observer.disconnect());
+    return game;
 }

@@ -16,6 +16,12 @@ public static class HitZoneClassifier
             return null;
         }
 
+        if (toleranceNormalized > 0)
+        {
+            var directContact = FindFirstContact(tools, [path[0]], 0);
+            if (directContact is not null) return directContact;
+        }
+
         ZoneContact? firstContact = null;
         foreach (var tool in tools)
         {
