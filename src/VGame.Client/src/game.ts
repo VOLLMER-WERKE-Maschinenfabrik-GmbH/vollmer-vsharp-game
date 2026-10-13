@@ -5,6 +5,7 @@ import {
 } from "@microsoft/signalr";
 import Phaser from "phaser";
 import { MachineShell } from "./machine-shell";
+import { GameAudio } from "./game-audio";
 
 type ClientRole = "player" | "watcher";
 type GameMode = "laser" | "saw";
@@ -60,6 +61,7 @@ type ActionResolved = {
     score: number;
     combo: number;
     feedbackPoint?: Point2 | null;
+    audioEvent: string;
 };
 type GestureSample = { x: number; y: number; elapsedMs: number };
 type ActiveGesture = { startedAt: number; samples: GestureSample[] };
@@ -85,6 +87,9 @@ class WorkshopScene extends Phaser.Scene {
     private inputArea = { ...stageArea };
     private gestureTrail!: Phaser.GameObjects.Graphics;
     private feedbackObjects = new Set<Phaser.GameObjects.GameObject>();
+    private audio?: GameAudio;
+    private readonly resolvedEvents = new Set<string>();
+    private startingRound = false;
 
     constructor(requestedRole: ClientRole, private readonly shell: MachineShell) {
         super({ key: `workshop-${requestedRole}` });
@@ -109,21 +114,22 @@ class WorkshopScene extends Phaser.Scene {
         this.createInterface();
         this.gestureTrail = this.add.graphics().setDepth(75);
         this.registerInput();
+        if (this.requestedRole === "player") this.audio = new GameAudio(message => this.shell.setAudioStatus(message));
         this.shell.bind(command => {
             if (command === "start") void this.startRound();
             else void this.selectMode(command);
         }, volume => {
-            this.sound.volume = volume;
-            this.sound.mute = volume === 0;
+            this.audio?.setVolume(volume);
         });
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.shell.destroy();
+            this.audio?.destroy();
             void this.connection.stop();
         });
         this.connection.on("SnapshotUpdated", (snapshot: GameSnapshot) => this.applySnapshot(snapshot));
         this.connection.on("ActionResolved", (action: ActionResolved) => this.showActionFeedback(action));
-        this.connection.onreconnecting(() => this.shell.setConnection("VERBINDE …", true));
-        this.connection.onclose(() => this.shell.setConnection("OFFLINE", true));
+        this.connection.onreconnecting(() => { this.audio?.setRound(null, false, false); this.shell.setConnection("VERBINDE …", true); });
+        this.connection.onclose(() => { this.audio?.setRound(null, false, false); this.shell.setConnection("OFFLINE", true); });
         this.connection.onreconnected(() => this.joinHub());
         void this.joinHub();
     }
@@ -259,6 +265,8 @@ class WorkshopScene extends Phaser.Scene {
             this.feedbackObjects.clear();
             this.touchFeedback = undefined;
         }
+        if (this.snapshot?.roundId !== snapshot.roundId) this.resolvedEvents.clear();
+        this.audio?.setRound(snapshot.roundId, this.role === "player", snapshot.phase === "playing");
         this.snapshot = snapshot;
         if (snapshot.stageArea) {
             this.inputArea = { x: snapshot.stageArea.left * gameWidth, y: snapshot.stageArea.top * gameHeight,
@@ -293,7 +301,8 @@ class WorkshopScene extends Phaser.Scene {
             }
         }
 
-        for (const tool of tools) {
+        const orderedTools = [...tools].sort((first, second) => first.definition.zOrder - second.definition.zOrder);
+        for (const [layer, tool] of orderedTools.entries()) {
             if (tool.placement === null) {
                 continue;
             }
@@ -308,7 +317,7 @@ class WorkshopScene extends Phaser.Scene {
                 tool.placement.center.x * gameWidth,
                 tool.placement.center.y * gameHeight);
             container.setAngle(tool.placement.rotationDegrees);
-            container.setDepth(40 + tool.definition.zOrder);
+            container.setDepth(40 + layer);
             container.setData("state", tool.state);
             this.drawTool(container, tool);
         }
@@ -317,7 +326,7 @@ class WorkshopScene extends Phaser.Scene {
     private createToolView(tool: ToolSnapshot): Phaser.GameObjects.Container {
         const width = tool.definition.boundingWidthNormalized * gameWidth;
         const height = tool.definition.boundingHeightNormalized * gameHeight;
-        const container = this.add.container(0, 0).setSize(width, height).setDepth(40 + tool.definition.zOrder);
+        const container = this.add.container(0, 0).setSize(width, height).setDepth(40);
         const graphics = this.add.graphics();
         container.add(graphics);
         container.setData("graphics", graphics);
@@ -444,8 +453,100 @@ class WorkshopScene extends Phaser.Scene {
             }
             context.restore();
         }
+        const shaft = definition.hitZones.find(zone => zone.role === "shaft");
+        if (shaft) {
+            context.save();
+            context.clip(polygon(shaft));
+            context.globalCompositeOperation = "source-atop";
+            this.drawFace(context, source.width, source.height, state, definition.visualKind);
+            context.restore();
+        }
         texture.refresh();
         return key;
+    }
+
+    private drawFace(context: CanvasRenderingContext2D, width: number, height: number, state: ToolState, kind: string): void {
+        const size = Math.min(width * 0.23, height * 0.65);
+        const centerHorizontal = width * (kind === "saw" ? 0.5 : 0.39);
+        let centerVertical = height * (kind === "saw" ? 0.33 : 0.5);
+        let verticalScale = 1;
+        if (kind !== "saw") {
+            const column = context.getImageData(Math.floor(centerHorizontal), 0, 1, height).data;
+            let top = height;
+            let bottom = -1;
+            for (let vertical = 0; vertical < height; vertical++) {
+                if (column[vertical * 4 + 3] < 128) continue;
+                top = Math.min(top, vertical);
+                bottom = Math.max(bottom, vertical);
+            }
+            if (bottom >= top) {
+                const bodyHeight = bottom - top + 1;
+                centerVertical = top + bodyHeight * 0.45;
+                verticalScale = Math.min(1, bodyHeight / (size * 0.9));
+            }
+        }
+        context.translate(centerHorizontal, centerVertical);
+        context.scale(1, verticalScale);
+        context.lineWidth = Math.max(3, size * 0.045);
+        context.lineCap = "round";
+        context.strokeStyle = "#182225";
+        const eyeVertical = -size * 0.12;
+        for (const direction of [-1, 1]) {
+            const horizontal = direction * size * 0.24;
+            context.fillStyle = "#fffdf1";
+            context.beginPath();
+            context.ellipse(horizontal, eyeVertical, size * 0.16, size * 0.20, direction * -0.12, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+            context.fillStyle = "#182225";
+            if (state === "failed") {
+                context.beginPath();
+                context.moveTo(horizontal - size * 0.07, eyeVertical - size * 0.07);
+                context.lineTo(horizontal + size * 0.07, eyeVertical + size * 0.07);
+                context.moveTo(horizontal + size * 0.07, eyeVertical - size * 0.07);
+                context.lineTo(horizontal - size * 0.07, eyeVertical + size * 0.07);
+                context.stroke();
+            } else {
+                context.beginPath();
+                context.arc(horizontal + size * 0.025, eyeVertical + (state === "inProgress" ? size * 0.06 : 0), size * 0.055, 0, Math.PI * 2);
+                context.fill();
+            }
+            if (state === "dull") {
+                context.fillStyle = "#9eabb0";
+                context.beginPath();
+                context.ellipse(horizontal, eyeVertical - size * 0.025, size * 0.15, size * 0.13, 0, Math.PI, Math.PI * 2);
+                context.fill();
+            }
+            context.beginPath();
+            context.moveTo(horizontal - size * 0.16, eyeVertical - size * 0.25 + (state === "dull" ? direction * size * 0.04 : 0));
+            context.lineTo(horizontal + size * 0.16, eyeVertical - size * 0.25 - (state === "dull" ? direction * size * 0.04 : 0));
+            context.stroke();
+        }
+        context.fillStyle = "#202428";
+        context.beginPath();
+        if (state === "sharp") {
+            context.moveTo(-size * 0.23, size * 0.16);
+            context.quadraticCurveTo(0, size * 0.53, size * 0.23, size * 0.16);
+            context.closePath();
+            context.fill();
+            context.stroke();
+            context.fillStyle = "#fffdf1";
+            context.fillRect(-size * 0.13, size * 0.18, size * 0.26, size * 0.07);
+        } else if (state === "inProgress" || state === "failed") {
+            context.ellipse(0, size * 0.26, size * (state === "failed" ? 0.16 : 0.09), size * 0.14, 0, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+            if (state === "failed") {
+                context.fillStyle = "#f27682";
+                context.beginPath();
+                context.ellipse(size * 0.05, size * 0.35, size * 0.10, size * 0.05, 0, 0, Math.PI * 2);
+                context.fill();
+            }
+        } else {
+            context.moveTo(-size * 0.17, size * 0.28);
+            context.quadraticCurveTo(0, size * 0.18, size * 0.17, size * 0.28);
+            context.stroke();
+        }
     }
 
     private async selectMode(mode: GameMode): Promise<void> {
@@ -457,7 +558,7 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     private async startRound(): Promise<void> {
-        if (this.requestedRole !== "player" || this.snapshot?.phase === "playing") {
+        if (this.requestedRole !== "player" || this.snapshot?.phase === "playing" || this.startingRound) {
             return;
         }
 
@@ -466,7 +567,15 @@ class WorkshopScene extends Phaser.Scene {
             return;
         }
 
-        await this.invokeHub<boolean>("StartRound");
+        this.startingRound = true;
+        try {
+            await this.audio?.unlock();
+            if (this.canBeginRound()) await this.invokeHub<boolean>("StartRound");
+        } finally { this.startingRound = false; }
+    }
+
+    private canBeginRound(): boolean {
+        return this.role === "player" && this.snapshot?.phase !== "playing";
     }
 
     private getAttractMessage(): string {
@@ -520,6 +629,10 @@ class WorkshopScene extends Phaser.Scene {
 
     private showActionFeedback(action: ActionResolved): void {
         if (action.roundId !== this.snapshot?.roundId) return;
+        if (this.resolvedEvents.has(action.eventId)) return;
+        this.resolvedEvents.add(action.eventId);
+        if (this.resolvedEvents.size > 1024) this.resolvedEvents.delete(this.resolvedEvents.values().next().value!);
+        this.audio?.play(action.eventId, action.roundId, action.audioEvent, this.snapshot.mode === "saw" ? "grind_effect" : "laser_effect");
         if (this.touchFeedback !== undefined) {
             this.touchFeedback.destroy();
         }
@@ -583,6 +696,7 @@ export function createGame(role: ClientRole): Phaser.Game {
         width: gameWidth,
         height: gameHeight,
         backgroundColor: "#292f31",
+        audio: { noAudio: true },
         scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH

@@ -92,9 +92,53 @@ if (Directory.Exists(Path.Combine(assetDirectory, "images")))
         ServeUnknownFileTypes = false
     });
 }
+if (Directory.Exists(Path.Combine(assetDirectory, "audio")))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(Path.Combine(assetDirectory, "audio")),
+        RequestPath = "/Assets/audio",
+        ServeUnknownFileTypes = false
+    });
+}
 app.UseAntiforgery();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
+app.MapGet("/api/game-audio", (HttpContext context, ILogger<Program> logger) =>
+{
+    context.Response.Headers.CacheControl = "no-store";
+    try
+    {
+        var manifest = JsonSerializer.Deserialize<AssetManifest>(File.ReadAllText(Path.Combine(assetDirectory, "config/manifest.json")), artworkJsonOptions)
+            ?? throw new InvalidDataException("Audio manifest is empty.");
+        string[] requiredPools = ["laser_success", "laser_fail", "laser_effect", "saw_success", "saw_fail", "grind_effect"];
+        var pools = manifest.AudioPools;
+        if (pools is null || pools.Count != requiredPools.Length || pools.Any(pool => pool is null)
+            || pools.Select(pool => pool.PoolId).Distinct(StringComparer.Ordinal).Count() != requiredPools.Length
+            || pools.Any(pool => !requiredPools.Contains(pool.PoolId, StringComparer.Ordinal) || pool.Variants is null
+                || pool.BagRule != "shuffle_no_repeat" || pool.VolumeProfile is not ("voice" or "feedback")
+                || pool.Variants.Any(variant => variant is null || !System.Text.RegularExpressions.Regex.IsMatch(variant, "^(laser|grind)/[a-z0-9_]+\\.(wav|mp3|ogg)$")
+                    || !File.Exists(Path.Combine(assetDirectory, "audio", variant)))
+                || pool.Fallback != "generated_tone" && !requiredPools.Contains(pool.Fallback, StringComparer.Ordinal)))
+            throw new InvalidDataException("Audio manifest has invalid pools or file references.");
+        foreach (var pool in pools)
+        {
+            var visited = new HashSet<string>(StringComparer.Ordinal) { pool.PoolId };
+            var fallback = pool.Fallback;
+            while (fallback != "generated_tone")
+            {
+                if (!visited.Add(fallback)) throw new InvalidDataException("Audio fallback cycle.");
+                fallback = pools.Single(candidate => candidate.PoolId == fallback).Fallback;
+            }
+        }
+        return Results.Ok(new { pools });
+    }
+    catch (Exception exception) when (exception is IOException or JsonException or InvalidOperationException)
+    {
+        logger.LogWarning("Audiokonfiguration kann nicht geladen werden: {Message}", exception.Message);
+        return Results.Problem(statusCode: 503, title: "Audiokonfiguration ist nicht verfügbar.");
+    }
+});
 app.MapGet("/api/workshop-events", (IConfiguration configuration, HttpContext context, ILogger<WorkshopEventOptions> logger) =>
 {
     context.Response.Headers.CacheControl = "no-store";

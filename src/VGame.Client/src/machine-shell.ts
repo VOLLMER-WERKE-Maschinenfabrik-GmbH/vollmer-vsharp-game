@@ -30,6 +30,7 @@ export class MachineShell {
     private eventCooldownTimer?: ReturnType<typeof setTimeout>;
     private eventOptions?: WorkshopEventOptions;
     private eventConfigurationUnavailable = false;
+    private audioStatus = "";
     private commandHandler: (command: ShellCommand) => void = () => {};
     private soundHandler: (volume: number) => void = () => {};
     private actionTimer?: ReturnType<typeof setTimeout>;
@@ -192,9 +193,14 @@ export class MachineShell {
 
     setError(message: string): void {
         const error = this.root.querySelector<HTMLElement>(".shell-error")!;
-        const visibleMessage = message || (this.eventConfigurationUnavailable ? "Werkstatt-Spielereien sind derzeit nicht verfügbar." : "");
+        const visibleMessage = message || this.audioStatus || (this.eventConfigurationUnavailable ? "Werkstatt-Spielereien sind derzeit nicht verfügbar." : "");
         error.textContent = visibleMessage;
         error.hidden = !visibleMessage;
+    }
+
+    setAudioStatus(message: string): void {
+        this.audioStatus = message;
+        this.setError("");
     }
 
     animateAction(point: { x: number; y: number }, success: boolean): void {

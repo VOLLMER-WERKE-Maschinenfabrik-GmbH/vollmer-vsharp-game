@@ -27,6 +27,42 @@ public sealed class GameHubIntegrationTests
     public TestContext TestContext { get; set; }
 
     [TestMethod]
+    public async Task GameAudio_ExposesSixPoolsAndExistingAudioWithoutFullManifest()
+    {
+        // Prüft die schmale Audio-Konfiguration, alle tatsächlichen Dateireferenzen und den Schutz der vollständigen Konfiguration.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/game-audio", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.IsTrue(response.Headers.CacheControl?.NoStore);
+        using var catalog = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.CancellationToken));
+        var pools = catalog.RootElement.GetProperty("pools");
+        Assert.AreEqual(6, pools.GetArrayLength());
+        var total = 0;
+        foreach (var pool in pools.EnumerateArray())
+        foreach (var variant in pool.GetProperty("variants").EnumerateArray())
+        {
+            using var audio = await client.GetAsync("/Assets/audio/" + variant.GetString(), TestContext.CancellationToken);
+            Assert.AreEqual(System.Net.HttpStatusCode.OK, audio.StatusCode);
+            Assert.StartsWith("audio/", audio.Content.Headers.ContentType!.MediaType!);
+            total++;
+        }
+        Assert.AreEqual(28, total);
+        using var fullManifest = await client.GetAsync("/Assets/config/manifest.json", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.NotFound, fullManifest.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task GameAudio_MissingClipIsNotServedAsSuccess()
+    {
+        // Prüft fehlende Audiodateien ohne irreführende erfolgreiche Antwort.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/Assets/audio/laser/missing_01.wav", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
     public async Task ActionResolved_WireOutcomeUsesCanonicalSnakeCaseForShaftHit()
     {
