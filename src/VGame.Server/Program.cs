@@ -39,6 +39,10 @@ IReadOnlyList<ToolDefinition> artworkTools = File.Exists(artworkCatalogPath)
         ?? throw new InvalidDataException("Der Artwork-Prototypkatalog ist leer.")
     : [];
 builder.Services.AddSingleton(artworkTools);
+#if DEBUG
+builder.Services.AddSingleton(new ZoneEditorService(Path.GetDirectoryName(Path.GetDirectoryName(gameplayConfigurationPath))!,
+    Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(gameplayConfigurationPath)))!, "media-source"), artworkTools, gameplayOptions));
+#endif
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<GameEngine>();
 builder.Services.AddSingleton<IClientOriginPolicy, ClientOriginPolicy>();
@@ -55,6 +59,27 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var app = builder.Build();
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var editorResource = path.StartsWithSegments("/tools/zones") || path == "/client/dist/zones.html"
+        || path.StartsWithSegments("/client/dist/assets") && path.Value?.Contains("/zones-", StringComparison.Ordinal) == true;
+    if (editorResource)
+    {
+        var allowed = false;
+#if DEBUG
+        allowed = ZoneEditorEndpoints.IsAllowed(context, app.Environment, context.RequestServices.GetRequiredService<IClientOriginPolicy>());
+#endif
+        if (!allowed)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        context.Response.Headers.CacheControl = "no-store";
+    }
+    await next(context);
+});
 
 app.UseStaticFiles();
 var assetDirectory = Path.GetDirectoryName(Path.GetDirectoryName(gameplayConfigurationPath))!;
@@ -88,6 +113,9 @@ app.MapGet("/api/workshop-events", (IConfiguration configuration, HttpContext co
 });
 app.MapGet("/play", (IWebHostEnvironment environment, HttpContext context) => MapClientPage(environment, context, "play.html"));
 app.MapGet("/watcher", (IWebHostEnvironment environment, HttpContext context) => MapClientPage(environment, context, "watcher.html"));
+#if DEBUG
+if (app.Environment.IsDevelopment()) ZoneEditorEndpoints.Map(app);
+#endif
 app.MapHub<GameHub>("/gameHub");
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

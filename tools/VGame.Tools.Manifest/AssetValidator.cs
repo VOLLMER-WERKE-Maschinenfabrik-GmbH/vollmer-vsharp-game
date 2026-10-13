@@ -91,11 +91,16 @@ public sealed class AssetValidator
     public static AssetZoneAuthoring ValidateZones(string filename, AssetMetadata metadata, SKBitmap bitmap)
     {
         using var document = JsonDocument.Parse(File.ReadAllText(filename));
-        if (!document.RootElement.TryGetProperty("pivot", out var pivot) || pivot.ValueKind != JsonValueKind.Object
+        return ValidateZones(document.RootElement, metadata, bitmap);
+    }
+
+    public static AssetZoneAuthoring ValidateZones(JsonElement document, AssetMetadata metadata, SKBitmap bitmap)
+    {
+        if (!document.TryGetProperty("pivot", out var pivot) || pivot.ValueKind != JsonValueKind.Object
             || !pivot.TryGetProperty("x", out var horizontalPivot) || horizontalPivot.ValueKind != JsonValueKind.Number
             || !pivot.TryGetProperty("y", out var verticalPivot) || verticalPivot.ValueKind != JsonValueKind.Number)
             throw new ManifestValidationException($"{metadata.AssetId}: explicit numeric pivot coordinates required.");
-        var zones = document.RootElement.Deserialize<AssetZoneAuthoring>(ManifestInputs.JsonOptions)
+        var zones = document.Deserialize<AssetZoneAuthoring>(ManifestInputs.JsonOptions)
             ?? throw new ManifestValidationException($"{metadata.AssetId}: empty zones.");
         if (zones.AssetId != metadata.AssetId || zones.Canvas is null || zones.Canvas.Width != bitmap.Width || zones.Canvas.Height != bitmap.Height
             || zones.Pivot is null || !IsNormalized(zones.Pivot.X) || !IsNormalized(zones.Pivot.Y)

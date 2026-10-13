@@ -8,6 +8,19 @@ namespace VGame.Tools.Manifest.Tests;
 public sealed class ManifestBuilderTests
 {
     [TestMethod]
+    public void Validation_InMemoryZonesUseSameRulesWithoutWritingFiles()
+    {
+        // Prüft den Editor-Eingang ohne temporäre oder authored Dateien mit denselben Regeln wie der Manifest-Build.
+        using var bitmap = CreateToolBitmap();
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(CreateToolZones(), ManifestInputs.JsonOptions);
+        var zones = AssetValidator.ValidateZones(json, CreateToolMetadata(), bitmap);
+        Assert.AreEqual("tool_0001", zones.AssetId);
+        Assert.AreEqual(HitZoneRole.Shaft, AssetValidator.Classify(zones, new Point2(0.5, 0.5))!.HitZone.Role);
+        using var invalid = System.Text.Json.JsonDocument.Parse("{}");
+        Assert.ThrowsExactly<ManifestValidationException>(() => AssetValidator.ValidateZones(invalid.RootElement, CreateToolMetadata(), bitmap));
+    }
+
+    [TestMethod]
     public void AudioIntegration_CliDerivesPoolsAndVerifyDetectsChangedFilesWithoutWriting()
     {
         // Prüft die gemeinsame Audioanbindung von Build, Verify und Audio-CLI mit stabiler Ausgabe und schreibfreier Änderungserkennung.

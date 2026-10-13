@@ -46,7 +46,7 @@ Die typisierten Manifest-/Metadaten-/Zonenverträge stehen in `src/VGame.Contrac
 
 `media-source/plan/delivery-list.csv` und das Bootstrap-Register `Assets/config/id-register.json` enthalten die 37 geplanten Asset-IDs. Alle sind reserviert; die Reservierung ist kein Liefer- oder Abnahmenachweis. Metadaten werden später unter `media-source/assets/`, Zonendateien unter `media-source/zone-authoring/` erzeugt. Das Register wird anschließend durch die Werkzeugkette gepflegt, nicht durch manuelle Neuvergabe.
 
-Manifest-Build/Verify und automatische Audiopool-Ableitung sind unter `tools/` implementiert und in der Solution enthalten. Der Zonen-Editor ist noch offen. Der laufende Prototyp konsumiert weiterhin `artwork.prototype.json`; das neue Manifest wird noch nicht als Spielkonfiguration übernommen.
+Manifest-Build/Verify und automatische Audiopool-Ableitung sind unter `tools/` implementiert und in der Solution enthalten. Der lokale Zonen-Editor ist im Debug-/Development-Host verfügbar. Der laufende Prototyp konsumiert weiterhin `artwork.prototype.json`; das neue Manifest wird noch nicht als Spielkonfiguration übernommen.
 
 ```powershell
 dotnet build tools/VGame.Tools.Cli/VGame.Tools.Cli.csproj
@@ -65,6 +65,18 @@ Der Build erzeugt ausschließlich `manifest.json`, `manifest.md` und das sortier
 Geplante Reservierungen ohne vollständige zugewiesene Metadaten erscheinen als `planned`, ohne tote Dateiverweise oder erfundene Herkunftsdaten. Dafür kann `build` eine gegenlesbare Aufstellung mit Exit-Code `0` erzeugen; `verify` bleibt mit Exit-Code `3` rot und schreibt nichts. Ungültige aktive Einträge, doppelte IDs, aktive reservierte IDs oder ein von Hand verändertes geschütztes Manifest führen zu Exit-Code `2`; fehlende aktive Dateien zu `3`. Bei Validierungsfehlern wird die vorhandene Ausgabe nicht ersetzt. Die Manifest-Prüfsumme schützt semantische Handänderungen; absichtlich neu berechnete Prüfsummen sind kein Sicherheitsmodell. Die drei Ausgabedateien werden einzeln atomar ersetzt, nicht als gemeinsame Dateisystemtransaktion.
 
 Im aktuellen Repositorybestand sind weiterhin alle 37 Produktions-IDs geplant: vollständige Produktionsmetadaten, Zonen und Bild-/Overlaylieferungen fehlen. Die bereits eingebundenen vier Prototypbilder werden dadurch nicht als fehlend oder freigegeben umgedeutet. Build wurde erfolgreich ausgeführt, ein zweiter Build war byteidentisch; Verify bestätigte Exit-Code `3` ohne Schreibzugriff. Das ist noch keine Produktions- oder Hardware-Abnahme. Eine lokale Ignore-Ausnahme in `media-source/.gitignore` erlaubt die Versionierung von Metadaten, Zonendateien und Lieferliste; Leonardo-Rohbilder und Affinity-Master bleiben ausgeschlossen.
+
+## Lokaler Zonen-Editor
+
+```powershell
+dotnet run --project src/VGame.Server/VGame.Server.csproj --configuration Debug --launch-profile http -- --Host:Urls=http://127.0.0.1:5081
+```
+
+Unter `http://127.0.0.1:5081/tools/zones` werden Werkzeugbilder ausgewählt und normalisierte `cut`-/`shaft`-Polygone sowie der Pivot bearbeitet. Punkte werden per Mausklick angelegt, gezogen oder numerisch geändert; Löschen, Zonenleeren, Undo/Redo, Zoom und Einpassen sind verfügbar. Ungedeckte opake Pixel werden rot markiert. Speichern bleibt bis zur Bestätigung von Abdeckung und Geometrie durch den gemeinsamen Servervalidator gesperrt.
+
+Geschrieben werden ausschließlich `media-source/zone-authoring/<assetId>.zones.json`, keine Bilder, Metadaten oder Manifeste. Ein Versionskonflikt liefert HTTP 409 statt fremde Änderungen zu überschreiben. Die Tap-/Swipe-Probe verwendet eine isolierte `GameEngine` mit aktueller Gameplay-Konfiguration im normalisierten Werkzeugraum, ohne die aktive Runde zu verändern. Sie ersetzt keine spätere Größenklassen-/DPI-/Latenzabnahme. GET-Swipe-Proben benötigen `endX`/`endY`; POST-Proben prüfen die aktuelle ungespeicherte Zonenfassung.
+
+Werkzeugseite, API und direkte Editorressourcen sind nur für lokale Debug-/Development-Aufrufe erreichbar; Fernzugriff, fremde Origins und Cross-Site-Aufrufe werden abgewiesen. Die Toolbibliothek ist vom Release-Host ausgeschlossen, Editor-HTML/-JS/-CSS werden nicht veröffentlicht. Das Messepaket stellt keinen Editor bereit. Vorhandene Prototypzonen bleiben ungeprüfte Entwürfe mit sichtbaren Lücken; Browser-Testpolygone wurden nicht als Produktionszonen gespeichert.
 
 ## Ausgewählter Artwork-Startsatz
 

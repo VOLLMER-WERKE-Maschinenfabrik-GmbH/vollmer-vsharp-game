@@ -6,7 +6,7 @@ export default defineConfig({
         outDir: "../VGame.Server/wwwroot/client/dist",
         emptyOutDir: true,
         rollupOptions: {
-            input: ["play.html", "watcher.html"]
+            input: ["play.html", "watcher.html", "zones.html"]
         }
     }
 });
