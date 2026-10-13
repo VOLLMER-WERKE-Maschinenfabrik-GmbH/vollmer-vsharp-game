@@ -123,12 +123,12 @@ Diese Regeln sind die einzige Autorität für die Zuordnung „Erfolg“ oder �
 | LASER | Tap | Tap-Punkt in Zone `cut` | `success` | +10 | `laser_success` | cyanfarbener Fokuspunkt und Lichtimpuls am Kontaktpunkt, grüne HUD-Bestätigung |
 | LASER | Tap | Tap-Punkt in Zone `shaft`; an der gemeinsamen Grenze hat `shaft` Vorrang | `shaft_hit` | -10 | `laser_fail` | kurzer roter Impuls am Schaft, Schaftblitz, rotes HUD-Kreuz |
 | LASER | Swipe | Pfad berührt das Werkzeug innerhalb der Toleranz | `wrong_sharpening` | -5 | `laser_fail` | roter Wischimpuls am Werkzeug, rotes HUD-Kreuz |
-| LASER | Tap oder Swipe | kein Werkzeugkontakt innerhalb der Toleranz | `miss` | -5 | `laser_fail` | kurzer roter Ring am Gestenpunkt, kein Werkzeugeffekt |
+| LASER | Tap oder Swipe | kein Werkzeugkontakt innerhalb der Toleranz | `miss` | -5 | keine Stimme; nur `laser_effect` | kurzer roter Ring am Gestenpunkt, kein Werkzeugeffekt |
 | SCHEIBE | Swipe | Pfad kreuzt Zone `cut` **und** Richtung innerhalb `maxAngleDeviationDeg` **und** Pfadlänge ≥ `minStrokeLengthNormalized` | `success` | +10 | `saw_success` | Schleifscheibe läuft an, gerichtete Funken entlang der Schneide, grüne HUD-Bestätigung |
 | SCHEIBE | Swipe | Pfad kreuzt Zone `cut`, aber Richtung außerhalb der Toleranz oder Strecke zu kurz | `wrong_sharpening` | -5 | `saw_fail` | kurzer Funkenabriss an der Schneide, rotes HUD-Kreuz |
 | SCHEIBE | Tap | Werkzeugkontakt innerhalb der Toleranz | `wrong_sharpening` | -5 | `saw_fail` | roter Stempel am Werkzeug, rotes HUD-Kreuz |
 | SCHEIBE | Swipe | Pfad berührt nur Zone `shaft`/Blattkörper | `wrong_sharpening` | -5 | `saw_fail` | roter Wischimpuls am Blattkörper, rotes HUD-Kreuz |
-| SCHEIBE | Tap oder Swipe | kein Werkzeugkontakt innerhalb der Toleranz | `miss` | -5 | `saw_fail` | kurzer roter Ring am Gestenpunkt, kein Werkzeugeffekt |
+| SCHEIBE | Tap oder Swipe | kein Werkzeugkontakt innerhalb der Toleranz | `miss` | -5 | keine Stimme; nur `grind_effect` | kurzer roter Ring am Gestenpunkt, kein Werkzeugeffekt |
 
 **Auswertungsregeln (verbindlich):**
 - Pro Geste wird höchstens ein Werkzeug ausgewertet: die früheste entlang des Pfads getroffene Trefferzone, bei Gleichstand die vorderste sichtbare Zone.
@@ -178,15 +178,17 @@ Audio ist in `Assets/audio/{ui,laser,grind,ambient,music}` organisiert. Ein Audi
 | Modus / Audiopool | Exakte Bedingung | Punkte (Startwert) | Konkrete Startdateien, gleiche Gewichtung | Klang / Status |
 |-|-|-|-|-|
 | LASER / `laser_success` | `success`: Tap-Punkt in Zone `cut` von Bohrer oder Fräser, mit oder ohne PKD | +10 | `cheer_high_01.wav`, `cheer_high_02.wav`, `cheer_high_03.wav`, `cheer_high_04.wav` | hochgepitchter Jubel; vier Dateien geliefert |
-| LASER / `laser_fail` | `wrong_sharpening`, `shaft_hit` oder `miss` (falsche Geste, Werkzeugkörper, Schafttreffer oder Geste ohne Werkzeugkontakt) | -5; `shaft_hit` -10 | `yell_high_01.wav`, `yell_high_02.wav`, `yell_high_03.wav`, `yell_high_04.wav`, `yell_high_05.wav` | hochgepitchter Protest; fünf Dateien geliefert |
+| LASER / `laser_fail` | `wrong_sharpening` oder `shaft_hit` (tatsächliche Fehlbearbeitung oder Schafttreffer) | -5; `shaft_hit` -10 | `yell_high_01.wav`, `yell_high_02.wav`, `yell_high_03.wav`, `yell_high_04.wav`, `yell_high_05.wav` | hochgepitchter Protest; fünf Dateien geliefert |
 | SCHEIBE / `saw_success` | `success`: Swipe kreuzt Zone `cut` mit zulässiger Richtung und Mindeststrecke | +10 | `cheer_low_01.wav`, `cheer_low_02.wav`, `cheer_low_03.wav`, `cheer_low_04.wav` | tiefer gepitchter zufriedener Ausruf; vier Dateien geliefert |
-| SCHEIBE / `saw_fail` | `wrong_sharpening` oder `miss` (falsche Richtung, zu kurzer Swipe, Tap, Blattkörper oder Geste ohne Werkzeugkontakt) | -5 | `yell_low_01.wav`, `yell_low_02.wav`, `yell_low_03.wav`, `yell_low_04.wav`, `yell_low_05.wav` | tiefer gepitchter Protest; fünf Dateien geliefert |
+| SCHEIBE / `saw_fail` | `wrong_sharpening` bei Werkzeugkontakt (falsche Richtung, zu kurzer Swipe, Tap oder Blattkörper) | -5 | `yell_low_01.wav`, `yell_low_02.wav`, `yell_low_03.wav`, `yell_low_04.wav`, `yell_low_05.wav` | tiefer gepitchter Protest; fünf Dateien geliefert |
 
-**Poolgröße:** Pro Aktion sind 3–6 Dateien das Produktionsziel, keine technische Mindest-/Höchstgrenze. Alle tatsächlich konfigurierten Varianten nehmen an der Zufallsauswahl teil; auch ein oder mehr als sechs Clips funktionieren ohne Codeänderung. Die Startliste verwendet vier bis fünf Varianten je Stimmenpool und vier bis sechs je Effektpool. Weitere Dateien folgen dem gleichen Namen mit `_04`, `_05`, `_06` usw. Fehlbearbeitung, Schaft und Fehlschlag bleiben für Punkte und Bildfeedback unterscheidbar, teilen aber den jeweiligen `fail`-Soundpool.
+**Poolgröße:** Pro Aktion sind 3–6 Dateien das Produktionsziel, keine technische Mindest-/Höchstgrenze. Alle tatsächlich konfigurierten Varianten nehmen an der Zufallsauswahl teil; auch ein oder mehr als sechs Clips funktionieren ohne Codeänderung. Die Startliste verwendet vier bis fünf Varianten je Stimmenpool und vier bis sechs je Effektpool. Weitere Dateien folgen dem gleichen Namen mit `_04`, `_05`, `_06` usw. Fehlbearbeitung und Schaft bleiben für Punkte und Bildfeedback unterscheidbar, teilen aber den jeweiligen `fail`-Stimmenpool. Fehlklicks ohne Werkzeugkontakt verwenden nur das Effektsignal, keine Stimme.
 
 Jeder Pool verwendet einen zufällig gemischten Beutel: Alle vorhandenen Varianten werden einmal gezogen, danach neu gemischt; bei mehr als einer Variante keine unmittelbare Wiederholung an der Beutelgrenze. Ein Ein-Datei-Pool spielt seine einzige Datei; ein leerer Pool nutzt den definierten Audio-Fallback. Gemeinsam verwendete Pools teilen den Beutel. Ziehung nur beim tatsächlichen Soundstart, keine Häufung durch verworfene Ereignisse. Keine zusätzliche Laufzeit-Pitchänderung der bereits bearbeiteten Lieferdateien. Empfohlene Sprachclips: 0,3 bis 1,2 Sekunden, maximal 1,8 Sekunden, ohne lange führende Stille, ohne Musikbett, mit einheitlicher wahrgenommener Lautheit und ohne Clipping. Längere Stimmdateien benötigen einen konfigurierten, hörgeprüften Ausschnitt.
 
 ### 3.4.2 Feedbacksignale, Bedienaktionen und Musik
+
+**Fehlklick ins Leere (Nutzerentscheidung vom 2026-10-13):** Bei `miss` wird keine Werkstückstimme und damit kein Schrei gestartet. Nur das modusbezogene Effektsignal bleibt erhalten; Punkteabzug und sichtbare Rückmeldung ändern sich nicht. Noch vorgemerkte Stimmen werden verworfen, damit kein verzögerter Schrei auf den Fehlklick folgt. Bereits laufende Stimmen stammen gegebenenfalls von einer vorherigen tatsächlichen Bearbeitung.
 
 Die modusbezogenen Effektsignale `laser_*` und `grind_*` sind geliefert und liegen unter `Assets/audio/laser/` beziehungsweise `Assets/audio/grind/`. Die UI-, Jingle- und Musikdateien werden direkt in ihre Zielordner `Assets/audio/ui/` beziehungsweise `Assets/audio/music/` geliefert und fehlen noch. Auch diese Aktionspools verwenden 3–6 Varianten als Ziel und dieselbe anzahlunabhängige Zufallsauswahl. Nur die durchgehende Hintergrundmusik benötigt keine 3–6 Dateien.
 

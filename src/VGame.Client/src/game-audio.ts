@@ -111,12 +111,17 @@ export class GameAudio {
         this.applyVolume();
     }
 
-    play(eventId: string, roundId: string, voicePool: string, effectPool: string): void {
+    play(eventId: string, roundId: string, voicePool: string | null, effectPool: string): void {
         if (!this.active || !this.playing || roundId !== this.roundId || this.events.has(eventId)) return;
         this.events.add(eventId);
         if (this.events.size > 1024) this.events.delete(this.events.values().next().value!);
         if (this.volume === 0 || this.context?.state !== "running") return;
         this.startPool(effectPool, false, true);
+        if (voicePool === null) {
+            clearTimeout(this.voiceTimer);
+            this.pendingVoice = undefined;
+            return;
+        }
         const now = performance.now();
         const wait = 180 - (now - this.lastVoiceStart);
         clearTimeout(this.voiceTimer);

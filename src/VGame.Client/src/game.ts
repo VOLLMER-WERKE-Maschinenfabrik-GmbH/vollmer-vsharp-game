@@ -456,8 +456,7 @@ class WorkshopScene extends Phaser.Scene {
         const shaft = definition.hitZones.find(zone => zone.role === "shaft");
         if (shaft) {
             context.save();
-            context.clip(polygon(shaft));
-            context.globalCompositeOperation = "source-atop";
+            context.globalCompositeOperation = "source-over";
             this.drawFace(context, source.width, source.height, state, definition.visualKind);
             context.restore();
         }
@@ -486,7 +485,7 @@ class WorkshopScene extends Phaser.Scene {
             }
         }
         context.translate(centerHorizontal, centerVertical);
-        context.scale(1, verticalScale);
+        context.scale(2, verticalScale * 2);
         context.lineWidth = Math.max(3, size * 0.045);
         context.lineCap = "round";
         context.strokeStyle = "#182225";
@@ -632,7 +631,8 @@ class WorkshopScene extends Phaser.Scene {
         if (this.resolvedEvents.has(action.eventId)) return;
         this.resolvedEvents.add(action.eventId);
         if (this.resolvedEvents.size > 1024) this.resolvedEvents.delete(this.resolvedEvents.values().next().value!);
-        this.audio?.play(action.eventId, action.roundId, action.audioEvent, this.snapshot.mode === "saw" ? "grind_effect" : "laser_effect");
+        this.audio?.play(action.eventId, action.roundId, action.outcome === "miss" ? null : action.audioEvent,
+            this.snapshot.mode === "saw" ? "grind_effect" : "laser_effect");
         if (this.touchFeedback !== undefined) {
             this.touchFeedback.destroy();
         }
