@@ -42,7 +42,7 @@ public sealed class ManifestBuilder(IReadOnlyList<AudioPoolManifestEntry>? audio
             var planned = new List<JsonObject>();
             var tools = new List<ToolManifestEntry>();
             var stages = new List<StageManifestEntry>();
-            var pools = (audioPools ?? []).OrderBy(pool => pool.PoolId, StringComparer.Ordinal).ToArray();
+            var pools = (audioPools ?? AudioPoolBuilder.Read(paths.AssetsDirectory)).OrderBy(pool => pool.PoolId, StringComparer.Ordinal).ToArray();
             ValidateAudioPools(paths.AssetsDirectory, pools);
             foreach (var reservation in register.Values.OrderBy(entry => entry.AssetId, StringComparer.Ordinal))
             {
@@ -120,7 +120,7 @@ public sealed class ManifestBuilder(IReadOnlyList<AudioPoolManifestEntry>? audio
             document["generation"] = new JsonObject { ["tool"] = "vgtools" };
             document["generation"]!["contentChecksum"] = Hash(Encoding.UTF8.GetBytes(ManifestInputs.CanonicalJson(document)));
             var manifestJson = ManifestInputs.CanonicalJson(document);
-            var markdown = CreateMarkdown(assets, planned);
+            var markdown = CreateMarkdown(assets, planned, pools);
             var registerJson = ManifestInputs.CanonicalJson(new AssetIdRegister { Version = 1, Entries = register.Values.OrderBy(entry => entry.AssetId, StringComparer.Ordinal).ToArray() });
             ValidateExistingOutput(paths.OutputFile);
             if (write)
@@ -241,11 +241,14 @@ public sealed class ManifestBuilder(IReadOnlyList<AudioPoolManifestEntry>? audio
             throw new ManifestValidationException("Generated manifest was manually changed; refusing overwrite.");
     }
 
-    private static string CreateMarkdown(IReadOnlyList<JsonObject> assets, IReadOnlyList<JsonObject> planned)
+    private static string CreateMarkdown(IReadOnlyList<JsonObject> assets, IReadOnlyList<JsonObject> planned, IReadOnlyList<AudioPoolManifestEntry> pools)
     {
         var text = new StringBuilder("# Generiertes Asset-Manifest\n\nDiese Datei wird durch vgtools erzeugt; Änderungen erfolgen ausschließlich in den Autorenquellen.\n\n| ID | Kategorie | Status | Datei |\n| --- | --- | --- | --- |\n");
         foreach (var entry in assets.Concat(planned).OrderBy(entry => entry["assetId"]!.GetValue<string>(), StringComparer.Ordinal))
             text.Append($"| {entry["assetId"]!.GetValue<string>()} | {entry["category"]!.GetValue<string>()} | {(entry["file"] is null ? "geplant" : "validiert")} | {entry["file"]?.GetValue<string>() ?? "noch nicht geliefert"} |\n");
+        text.Append("\n## Audiopools\n\n| Pool | Kategorie | Varianten | Fallback | Dateien |\n| --- | --- | --- | --- | --- |\n");
+        foreach (var pool in pools)
+            text.Append($"| {pool.PoolId} | {pool.Category} | {pool.Variants.Count} | {pool.Fallback} | {string.Join(", ", pool.Variants)} |\n");
         return text.ToString();
     }
 

@@ -1,9 +1,92 @@
 {
   "assets": [],
-  "audioPools": [],
+  "audioPools": [
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "grind-sfx",
+      "fallback": "generated_tone",
+      "poolId": "grind_effect",
+      "variants": [
+        "grind/grind_01.wav",
+        "grind/grind_02.wav",
+        "grind/grind_03.wav",
+        "grind/grind_04.wav"
+      ],
+      "volumeProfile": "feedback"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "laser-sfx",
+      "fallback": "generated_tone",
+      "poolId": "laser_effect",
+      "variants": [
+        "laser/laser_01.wav",
+        "laser/laser_02.wav",
+        "laser/laser_03.wav",
+        "laser/laser_04.wav",
+        "laser/laser_05.wav",
+        "laser/laser_06.wav"
+      ],
+      "volumeProfile": "feedback"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "laser-sfx",
+      "fallback": "laser_effect",
+      "poolId": "laser_fail",
+      "variants": [
+        "laser/yell_high_01.wav",
+        "laser/yell_high_02.wav",
+        "laser/yell_high_03.wav",
+        "laser/yell_high_04.wav",
+        "laser/yell_high_05.wav"
+      ],
+      "volumeProfile": "voice"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "laser-sfx",
+      "fallback": "laser_effect",
+      "poolId": "laser_success",
+      "variants": [
+        "laser/cheer_high_01.wav",
+        "laser/cheer_high_02.wav",
+        "laser/cheer_high_03.wav",
+        "laser/cheer_high_04.wav"
+      ],
+      "volumeProfile": "voice"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "grind-sfx",
+      "fallback": "grind_effect",
+      "poolId": "saw_fail",
+      "variants": [
+        "grind/yell_low_01.wav",
+        "grind/yell_low_02.wav",
+        "grind/yell_low_03.wav",
+        "grind/yell_low_04.wav",
+        "grind/yell_low_05.wav"
+      ],
+      "volumeProfile": "voice"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "grind-sfx",
+      "fallback": "grind_effect",
+      "poolId": "saw_success",
+      "variants": [
+        "grind/cheer_low_01.wav",
+        "grind/cheer_low_02.wav",
+        "grind/cheer_low_03.wav",
+        "grind/cheer_low_04.wav"
+      ],
+      "volumeProfile": "voice"
+    }
+  ],
   "configVersion": "9258f954cfdb3873aa729f0a66732de54b01899f31e4e2b9d58435aaed192640",
   "generation": {
-    "contentChecksum": "58c9b42b8e0c912f76f4a616c827b4f8d94e3e2d4e6d85e1d7dbee9a9db8b758",
+    "contentChecksum": "a56c30d16d98916894df44fb201dd6f7b5ad03172826ecf2b4b550fa4e180e28",
     "tool": "vgtools"
   },
   "manifestVersion": "1.0.0",

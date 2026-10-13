@@ -59,6 +59,21 @@ public sealed record AudioPoolManifestEntry
     public required string Fallback { get; init; }
 }
 
+public sealed record AudioPoolAuthoring
+{
+    public required IReadOnlyList<AudioPoolDefinition> Pools { get; init; }
+}
+
+public sealed record AudioPoolDefinition
+{
+    public required string PoolId { get; init; }
+    public required string FileGroup { get; init; }
+    public required string Category { get; init; }
+    public required string VolumeProfile { get; init; }
+    public required string BagRule { get; init; }
+    public required string Fallback { get; init; }
+}
+
 public sealed record StageManifestEntry
 {
     public required string AssetId { get; init; }

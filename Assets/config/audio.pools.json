@@ -1,0 +1,10 @@
+{
+  "pools": [
+    { "poolId": "laser_success", "fileGroup": "cheer_high", "category": "laser-sfx", "volumeProfile": "voice", "bagRule": "shuffle_no_repeat", "fallback": "laser_effect" },
+    { "poolId": "laser_fail", "fileGroup": "yell_high", "category": "laser-sfx", "volumeProfile": "voice", "bagRule": "shuffle_no_repeat", "fallback": "laser_effect" },
+    { "poolId": "laser_effect", "fileGroup": "laser", "category": "laser-sfx", "volumeProfile": "feedback", "bagRule": "shuffle_no_repeat", "fallback": "generated_tone" },
+    { "poolId": "saw_success", "fileGroup": "cheer_low", "category": "grind-sfx", "volumeProfile": "voice", "bagRule": "shuffle_no_repeat", "fallback": "grind_effect" },
+    { "poolId": "saw_fail", "fileGroup": "yell_low", "category": "grind-sfx", "volumeProfile": "voice", "bagRule": "shuffle_no_repeat", "fallback": "grind_effect" },
+    { "poolId": "grind_effect", "fileGroup": "grind", "category": "grind-sfx", "volumeProfile": "feedback", "bagRule": "shuffle_no_repeat", "fallback": "generated_tone" }
+  ]
+}

@@ -19,7 +19,13 @@ public static class Program
         root.Subcommands.Add(manifest);
         root.SetAction(_ => ShowUsage(output));
         manifest.SetAction(_ => ShowUsage(output));
-        foreach (var commandName in new[] { "build", "verify" })
+        var audio = new Command("audio", "Audio authoring tools.");
+        var pools = new Command("pools", "Derive pool variants from existing audio files.");
+        root.Subcommands.Add(audio);
+        audio.Subcommands.Add(pools);
+        audio.SetAction(_ => ShowUsage(output));
+        pools.SetAction(_ => ShowUsage(output));
+        foreach (var (commandName, parent, write) in new[] { ("build", manifest, true), ("verify", manifest, false), ("build", pools, true) })
         {
             var command = new Command(commandName, commandName == "build" ? "Generate validated manifest files." : "Validate without writing files.");
             var assets = new Option<string>("--assets") { Description = "Runtime asset directory.", DefaultValueFactory = _ => "Assets" };
@@ -33,12 +39,12 @@ public static class Program
                 var assetsDirectory = Path.GetFullPath(parseResult.GetValue(assets)!);
                 var sourceDirectory = Path.GetFullPath(parseResult.GetValue(source)!);
                 var filename = parseResult.GetValue(destination) ?? Path.Combine(assetsDirectory, "config/manifest.json");
-                var result = new ManifestBuilder().Run(new(assetsDirectory, sourceDirectory, filename), commandName == "build");
+                var result = new ManifestBuilder().Run(new(assetsDirectory, sourceDirectory, filename), write);
                 foreach (var issue in result.Issues) output.WriteLine($"{(issue.Planned ? "PLANNED" : "ERROR")} {issue.AssetId}: {issue.Message}");
                 output.WriteLine($"Manifest {commandName}: exit {result.ExitCode}; files written: {result.Written.ToString().ToLowerInvariant()}.");
                 return result.ExitCode;
             });
-            manifest.Subcommands.Add(command);
+            parent.Subcommands.Add(command);
         }
         var parsed = root.Parse(arguments);
         if (parsed.Errors.Count > 0)
@@ -62,6 +68,7 @@ public static class Program
     private static int ShowUsage(TextWriter output)
     {
         output.WriteLine("Usage: vgtools manifest build|verify [--assets Assets] [--source media-source] [--out Assets/config/manifest.json]");
+        output.WriteLine("       vgtools audio pools build [--assets Assets] [--source media-source] [--out Assets/config/manifest.json]");
         return 2;
     }
 }

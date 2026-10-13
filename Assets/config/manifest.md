@@ -41,3 +41,14 @@ Diese Datei wird durch vgtools erzeugt; Änderungen erfolgen ausschließlich in 
 | tool_0010 | tool-image | geplant | noch nicht geliefert |
 | tool_0011 | tool-image | geplant | noch nicht geliefert |
 | tool_0012 | tool-image | geplant | noch nicht geliefert |
+
+## Audiopools
+
+| Pool | Kategorie | Varianten | Fallback | Dateien |
+| --- | --- | --- | --- | --- |
+| grind_effect | grind-sfx | 4 | generated_tone | grind/grind_01.wav, grind/grind_02.wav, grind/grind_03.wav, grind/grind_04.wav |
+| laser_effect | laser-sfx | 6 | generated_tone | laser/laser_01.wav, laser/laser_02.wav, laser/laser_03.wav, laser/laser_04.wav, laser/laser_05.wav, laser/laser_06.wav |
+| laser_fail | laser-sfx | 5 | laser_effect | laser/yell_high_01.wav, laser/yell_high_02.wav, laser/yell_high_03.wav, laser/yell_high_04.wav, laser/yell_high_05.wav |
+| laser_success | laser-sfx | 4 | laser_effect | laser/cheer_high_01.wav, laser/cheer_high_02.wav, laser/cheer_high_03.wav, laser/cheer_high_04.wav |
+| saw_fail | grind-sfx | 5 | grind_effect | grind/yell_low_01.wav, grind/yell_low_02.wav, grind/yell_low_03.wav, grind/yell_low_04.wav, grind/yell_low_05.wav |
+| saw_success | grind-sfx | 4 | grind_effect | grind/cheer_low_01.wav, grind/cheer_low_02.wav, grind/cheer_low_03.wav, grind/cheer_low_04.wav |

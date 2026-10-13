@@ -8,6 +8,54 @@ namespace VGame.Tools.Manifest.Tests;
 public sealed class ManifestBuilderTests
 {
     [TestMethod]
+    public void AudioIntegration_CliDerivesPoolsAndVerifyDetectsChangedFilesWithoutWriting()
+    {
+        // Prüft die gemeinsame Audioanbindung von Build, Verify und Audio-CLI mit stabiler Ausgabe und schreibfreier Änderungserkennung.
+        using var fixture = new ManifestFixture();
+        var filename = Path.Combine(fixture.Paths.AssetsDirectory, "config/audio.pools.json");
+        var authoring = new AudioPoolAuthoring { Pools = [new() { PoolId = "laser_success", FileGroup = "cheer_high", Category = "laser-sfx",
+            VolumeProfile = "voice", BagRule = "shuffle_no_repeat", Fallback = "generated_tone" }] };
+        File.WriteAllText(filename, ManifestInputs.CanonicalJson(authoring));
+        var audioDirectory = Path.Combine(fixture.Paths.AssetsDirectory, "audio/laser");
+        Directory.CreateDirectory(audioDirectory);
+        File.WriteAllBytes(Path.Combine(audioDirectory, "cheer_high_01.wav"), [1, 2, 3]);
+        using var output = new StringWriter();
+        var arguments = new[] { "audio", "pools", "build", "--assets", fixture.Paths.AssetsDirectory, "--source", fixture.Paths.SourceDirectory };
+        Assert.AreEqual(0, VGame.Tools.Cli.Program.Run(arguments, output));
+        var pools = JsonNode.Parse(File.ReadAllText(fixture.Paths.OutputFile))!["audioPools"]!.AsArray();
+        Assert.HasCount(1, Assert.ContainsSingle(pools)!["variants"]!.AsArray());
+        var original = fixture.OutputSnapshot();
+        Assert.AreEqual(0, new ManifestBuilder().Run(fixture.Paths, false).ExitCode);
+        Assert.AreEqual(original, fixture.OutputSnapshot());
+        File.WriteAllBytes(Path.Combine(audioDirectory, "cheer_high_02.wav"), [4, 5, 6]);
+        Assert.AreEqual(2, new ManifestBuilder().Run(fixture.Paths, false).ExitCode);
+        Assert.AreEqual(original, fixture.OutputSnapshot());
+        var definitionBefore = File.ReadAllText(filename);
+        Assert.AreEqual(0, new ManifestBuilder().Run(fixture.Paths, true).ExitCode);
+        Assert.AreEqual(definitionBefore, File.ReadAllText(filename));
+        var updated = fixture.OutputSnapshot();
+        Assert.AreEqual(0, VGame.Tools.Cli.Program.Run(arguments, output));
+        Assert.AreEqual(updated, fixture.OutputSnapshot());
+    }
+
+    [TestMethod]
+    public void AudioIntegration_InvalidAndMissingDefinitionsPreserveOutputs()
+    {
+        // Prüft die dokumentierten Fehlercodes für ungültige und fehlende Pooldefinitionen ohne Teil-Ausgabe.
+        using var fixture = new ManifestFixture();
+        var builder = new ManifestBuilder();
+        Assert.AreEqual(0, builder.Run(fixture.Paths, true).ExitCode);
+        var original = fixture.OutputSnapshot();
+        var filename = Path.Combine(fixture.Paths.AssetsDirectory, "config/audio.pools.json");
+        File.WriteAllText(filename, """{"pools":[{"poolId":"voice"}]}""");
+        Assert.AreEqual(2, builder.Run(fixture.Paths, true).ExitCode);
+        Assert.AreEqual(original, fixture.OutputSnapshot());
+        File.Delete(filename);
+        Assert.AreEqual(3, builder.Run(fixture.Paths, true).ExitCode);
+        Assert.AreEqual(original, fixture.OutputSnapshot());
+    }
+
+    [TestMethod]
     [DataRow("null-zone")]
     [DataRow("missing-pivot-coordinate")]
     [DataRow("covered-cut")]
@@ -235,6 +283,7 @@ public sealed class ManifestBuilderTests
             var canonicalTemplates = Path.Combine(repository!.FullName, "Assets/templates");
             foreach (var filename in Directory.GetFiles(canonicalTemplates, "*.json")) File.Copy(filename, Path.Combine(Paths.AssetsDirectory, "templates", Path.GetFileName(filename)));
             File.WriteAllText(Path.Combine(Paths.AssetsDirectory, "config/gameplay.json"), ManifestInputs.CanonicalJson(new VGame.Domain.GameplayOptions()));
+            File.WriteAllText(Path.Combine(Paths.AssetsDirectory, "config/audio.pools.json"), """{"pools":[]}""");
             File.WriteAllText(Path.Combine(Paths.AssetsDirectory, "config/id-register.json"), """{"version":1,"entries":[]}""");
         }
 
