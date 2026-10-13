@@ -21,6 +21,46 @@ dotnet build VGame.sln
 
 `Publish-Game.ps1` erstellt nach dem Client-Build ein selbstständiges Windows-x64-Paket unter `artifacts/publish/win-x64`. Das Paket benötigt für den Start weder Internet noch NuGet- oder npm-Zugriff.
 
+Die HTML-Einstiegspunkte `/play` und `/watcher` werden mit `Cache-Control: no-store` ausgeliefert, damit neue Paketstände keine alten Bundle-Verweise aus dem Browsercache übernehmen. Nach einem Publish muss der laufende Paketserver neu gestartet werden. Bereits vor dieser Korrektur zwischengespeicherte Seiten werden einmal mit `Strg+F5` neu geladen oder über einen zusätzlichen Versionsparameter geöffnet; gehashte JavaScript-/CSS-Dateien behalten ihre bestehenden Cache-Regeln.
+
+## Retro-Maschinenhülle und Ereignistasten
+
+Die Spieleransicht enthält die Retro-Hülle mit Status-/Achsspalte, Maschinenandeutung, acht grünen Ereignistasten und F1–F6-Leiste. Start und Moduswahl werden durch bestätigte Server-Snapshots freigegeben; während einer Runde bleiben sie gesperrt. F4 zeigt eine visuelle Gesten-Demo, F6 schaltet den lokalen Phaser-Pegel zwischen laut, leise und stumm. Highscore ist noch deaktiviert; Ranglisten und Audiopools werden in AP-05 umgesetzt. In der Watcheransicht werden keine bedienbaren Besucherleisten angezeigt.
+
+Die Ereignisprofile werden in `Assets/config/gameplay.json` unter `workshopEvents` eingestellt:
+
+| Einstellung | Wirkung |
+| --- | --- |
+| `enabled` | Alle Werkstatt-Spielereien werden gemeinsam aktiviert oder deaktiviert. |
+| `events.<name>.enabled` | Die einzelne Symboltaste wird aktiviert oder deaktiviert. |
+| `events.<name>.durationMilliseconds` | Effektdauer von 1 bis 2000 ms; Standardwert 1400 ms. |
+| `events.<name>.cooldownMilliseconds` | Wartezeit nach dem Effekt von 0 bis 60000 ms; Standardwert 3000 ms. |
+
+Die Profilnamen sind `gauge`, `conveyor`, `wiper`, `stamp`, `tool`, `shield`, `drive` und `egg`. Während eines Effekts werden alle Ereignistasten gegen Überlagerung gesperrt. Danach bleiben nur noch Tasten mit laufendem Cooldown oder deaktiviertem Profil gesperrt. Sämtliche Effekte sind lokal und wertungsneutral; Ereignistöne und eine konfigurierte Easter-Egg-Sequenz sind noch nicht implementiert.
+
+Über `GET /api/workshop-events` werden ausschließlich die validierten Besucheroptionen ohne Cache ausgeliefert. Dateiänderungen werden vom Host neu eingelesen; die Spielseite muss anschließend neu geladen werden, damit die Profile übernommen werden. Ein Client-Neubau ist dafür nicht erforderlich. Ungültige Startkonfiguration verhindert den Hoststart; bei ungültigen Laufzeitwerten liefert der Endpunkt HTTP 503. Bei fehlender oder ungültiger Antwort bleiben die Ereignistasten gesperrt und ein Fehlerhinweis wird angezeigt, ohne den Rundenstart zu verhindern. Im veröffentlichten Paket muss dessen eigene Konfigurationsdatei geändert werden.
+
+## Manifest- und Authoring-Grundlage
+
+Die typisierten Manifest-/Metadaten-/Zonenverträge stehen in `src/VGame.Contracts/AssetManifest.cs`. Die JSON-Feldnamen aus dem Konzept bleiben erhalten; Polygonpunkte werden im Autorenmanifest als Zahlenpaare gespeichert, nicht als Gesten-`Point2`-Objekte. Die sieben Kategorievorlagen in `Assets/templates/` verwenden JSON Schema Draft 2020-12 und referenzieren gemeinsame Pflichtangaben für Herkunft, Lizenz und Erstellungszeit. Bei Leonardo-Herkunft werden zusätzlich tatsächliche Angaben zu Modell, Seed und Prompt verlangt; Produktionswerte werden nicht erfunden.
+
+`media-source/plan/delivery-list.csv` und das Bootstrap-Register `Assets/config/id-register.json` enthalten die 37 geplanten Asset-IDs. Alle sind reserviert; die Reservierung ist kein Liefer- oder Abnahmenachweis. Metadaten werden später unter `media-source/assets/`, Zonendateien unter `media-source/zone-authoring/` erzeugt. Das Register wird anschließend durch die Werkzeugkette gepflegt, nicht durch manuelle Neuvergabe.
+
+Manifest-Build/Verify sind unter `tools/` implementiert und in der Solution enthalten. Der Zonen-Editor und die automatische Audiopool-Ableitung sind noch offen. Der laufende Prototyp konsumiert weiterhin `artwork.prototype.json`; das neue Manifest wird noch nicht als Spielkonfiguration übernommen.
+
+```powershell
+dotnet build tools/VGame.Tools.Cli/VGame.Tools.Cli.csproj
+dotnet tools/VGame.Tools.Cli/bin/Debug/net10.0/vgtools.dll manifest build --assets Assets --source media-source --out Assets/config/manifest.json
+dotnet tools/VGame.Tools.Cli/bin/Debug/net10.0/vgtools.dll manifest verify --assets Assets --source media-source --out Assets/config/manifest.json
+dotnet test tools/VGame.Tools.Manifest.Tests/VGame.Tools.Manifest.Tests.csproj --filter "FullyQualifiedName~ManifestBuilderTests"
+```
+
+Der Build erzeugt ausschließlich `manifest.json`, `manifest.md` und das sortierte ID-Register unter `Assets/config/`; Bilder und Autorenquellen bleiben unverändert. Die Ausgabe ist bei unveränderten Eingaben byteidentisch. Prüfsummen, Dateiformat/-maß, Transparenzrand, Silhouettenabdeckung, gültige Polygongeometrie und Bühnenfläche werden geprüft. Die nach Schaftvorrang verbleibende Schneide muss zusammenhängend sein und opake Trefferpixel enthalten. Metadaten dürfen erzeugte Dateipfade oder Prüfsummen nicht überschreiben. Aktive Werkzeuge benötigen tatsächlich gelieferte Zustands-Overlays und gültige Audioverweise; die Audiopool-Ableitung aus authored Pooldefinitionen wird erst in AP-03 an die CLI angeschlossen.
+
+Geplante Reservierungen ohne vollständige zugewiesene Metadaten erscheinen als `planned`, ohne tote Dateiverweise oder erfundene Herkunftsdaten. Dafür kann `build` eine gegenlesbare Aufstellung mit Exit-Code `0` erzeugen; `verify` bleibt mit Exit-Code `3` rot und schreibt nichts. Ungültige aktive Einträge, doppelte IDs, aktive reservierte IDs oder ein von Hand verändertes geschütztes Manifest führen zu Exit-Code `2`; fehlende aktive Dateien zu `3`. Bei Validierungsfehlern wird die vorhandene Ausgabe nicht ersetzt. Die Manifest-Prüfsumme schützt semantische Handänderungen; absichtlich neu berechnete Prüfsummen sind kein Sicherheitsmodell. Die drei Ausgabedateien werden einzeln atomar ersetzt, nicht als gemeinsame Dateisystemtransaktion.
+
+Im aktuellen Repositorybestand sind weiterhin alle 37 Produktions-IDs geplant: vollständige Produktionsmetadaten, Zonen und Bild-/Overlaylieferungen fehlen. Die bereits eingebundenen vier Prototypbilder werden dadurch nicht als fehlend oder freigegeben umgedeutet. Build wurde erfolgreich ausgeführt, ein zweiter Build war byteidentisch; Verify bestätigte Exit-Code `3` ohne Schreibzugriff. Das ist noch keine Produktions- oder Hardware-Abnahme. Eine lokale Ignore-Ausnahme in `media-source/.gitignore` erlaubt die Versionierung von Metadaten, Zonendateien und Lieferliste; Leonardo-Rohbilder und Affinity-Master bleiben ausgeschlossen.
+
 ## Ausgewählter Artwork-Startsatz
 
 Die unveränderten Leonardo-JPGs liegen unter `media-source/leonardo/`. Über `node media-source/prepare-artwork.mjs` werden nach Installation der Client-Abhängigkeiten Variante 8 der Bühne, Variante 1 des Bohrers, Variante 3 des Fräsers und Variante 1 des Sägeblatts aufbereitet. Die Originale werden nicht verändert.

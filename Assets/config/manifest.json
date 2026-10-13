@@ -1,0 +1,228 @@
+{
+  "assets": [],
+  "audioPools": [],
+  "configVersion": "9258f954cfdb3873aa729f0a66732de54b01899f31e4e2b9d58435aaed192640",
+  "generation": {
+    "contentChecksum": "58c9b42b8e0c912f76f4a616c827b4f8d94e3e2d4e6d85e1d7dbee9a9db8b758",
+    "tool": "vgtools"
+  },
+  "manifestVersion": "1.0.0",
+  "planned": [
+    {
+      "assetId": "bg_0001",
+      "category": "showroom-stage",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0001",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0002",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0003",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0004",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "fx_0001",
+      "category": "laser-effect",
+      "status": "planned"
+    },
+    {
+      "assetId": "fx_0002",
+      "category": "grind-effect",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0001",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0002",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0003",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0004",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0005",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0006",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0001",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0002",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0003",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0004",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0005",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0006",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0007",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0008",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0009",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0010",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0011",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0012",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0001",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0002",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0003",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0004",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0005",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0006",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0007",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0008",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0009",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0010",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0011",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0012",
+      "category": "tool-image",
+      "status": "planned"
+    }
+  ],
+  "scoreProfiles": [
+    {
+      "correctScore": 10,
+      "missPenalty": -5,
+      "scoreProfileId": "laser_default",
+      "shaftHitPenalty": -10,
+      "wrongSharpeningPenalty": -5
+    },
+    {
+      "correctScore": 10,
+      "missPenalty": -5,
+      "scoreProfileId": "saw_default",
+      "shaftHitPenalty": -10,
+      "wrongSharpeningPenalty": -5
+    }
+  ],
+  "spawnProfiles": [
+    {
+      "difficultyRampId": "ramp_default",
+      "entryEdges": [
+        "left",
+        "right"
+      ],
+      "maxConcurrentTargets": 6,
+      "maxStageCoverage": 0.45,
+      "minTargetSpacingFactor": 1.25,
+      "spawnProfileId": "stage_default"
+    }
+  ],
+  "stage": [],
+  "tools": []
+}

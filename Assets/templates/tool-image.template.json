@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [{ "$ref": "asset.common.schema.json" }],
+  "type": "object",
+  "required": ["toolType", "interaction", "sizeClass", "pkd", "states"],
+  "properties": {
+    "assetId": { "pattern": "^tool_[0-9]{4}$" },
+    "category": { "const": "tool-image" },
+    "toolType": { "enum": ["drill", "milling_cutter", "saw_blade"] },
+    "interaction": { "enum": ["tap", "swipe"] },
+    "sizeClass": { "enum": ["small", "medium", "large"] },
+    "pkd": { "type": "boolean" },
+    "states": { "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": { "enum": ["dull", "in_progress", "sharp", "failed"] } }
+  },
+  "x-imageNorm": { "directory": "images/tools", "formats": ["webp"], "width": 1024, "height": 1024, "transparent": true }
+}

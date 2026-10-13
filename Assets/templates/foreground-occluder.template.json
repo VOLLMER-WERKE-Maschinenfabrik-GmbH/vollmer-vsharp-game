@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [{ "$ref": "asset.common.schema.json" }],
+  "type": "object", "required": ["motionProfileId"],
+  "properties": {
+    "assetId": { "pattern": "^occ_[0-9]{4}$" }, "category": { "const": "foreground-occluder" },
+    "motionProfileId": { "enum": ["pass_horizontal", "pass_diagonal", "rise_and_hold"] }
+  },
+  "x-imageNorm": { "directory": "images/background", "formats": ["webp"], "minimumLongestEdge": 512, "transparent": true }
+}

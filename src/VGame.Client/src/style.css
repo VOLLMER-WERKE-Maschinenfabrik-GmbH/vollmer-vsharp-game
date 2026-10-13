@@ -112,6 +112,7 @@ canvas { display: block; outline: none; }
 .event-button svg { width: 65%; height: 65%; max-width: 48px; max-height: 48px; }
 .event-button:hover:not(:disabled) { filter: brightness(1.2); }
 .event-button.is-active { background: #005b00; box-shadow: inset 0 4px 8px #001a00; }
+.event-button:disabled:not(.is-active) { opacity: 0.45; }
 .event-button:last-child svg { color: #ffffb2; }
 .event-drawer-toggle { display: none; }
 .shell-error { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 8px; background: #650718; color: white; font-size: 13px; overflow-wrap: anywhere; pointer-events: none; }
@@ -126,6 +127,7 @@ canvas { display: block; outline: none; }
 [data-effect="tool"] .machine-carriage { animation: tool-change 700ms ease 2; }
 [data-effect="drive"] .machine-wheel { animation: wheel-spin 500ms linear infinite; opacity: 1; }
 [data-effect="egg"] .machine-brand { animation: brand-flash 350ms ease 4; }
+[data-effect="wiper"] .machine-cell::after { animation-duration: var(--event-duration, 1400ms); }
 .is-watcher .command-strip, .is-watcher .function-keys, .is-watcher .event-rail, .is-watcher .side-modes { display: none; }
 .machine-shell.is-watcher { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .is-watcher .center-panel { grid-template-rows: minmax(0, 1fr); }

@@ -28,6 +28,9 @@ if (File.Exists(gameplayConfigurationPath))
 var gameplayOptions = builder.Configuration.Get<GameplayOptions>() ?? new GameplayOptions();
 gameplayOptions.Validate();
 builder.Services.AddSingleton(gameplayOptions);
+var workshopEventOptions = builder.Configuration.GetSection("WorkshopEvents")
+    .Get<WorkshopEventOptions>(options => options.ErrorOnUnknownConfiguration = true) ?? new();
+workshopEventOptions.Validate();
 var artworkCatalogPath = Path.Combine(Path.GetDirectoryName(gameplayConfigurationPath)!, "artwork.prototype.json");
 var artworkJsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 artworkJsonOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
@@ -67,8 +70,24 @@ if (Directory.Exists(Path.Combine(assetDirectory, "images")))
 app.UseAntiforgery();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
-app.MapGet("/play", (IWebHostEnvironment environment) => MapClientPage(environment, "play.html"));
-app.MapGet("/watcher", (IWebHostEnvironment environment) => MapClientPage(environment, "watcher.html"));
+app.MapGet("/api/workshop-events", (IConfiguration configuration, HttpContext context, ILogger<WorkshopEventOptions> logger) =>
+{
+    context.Response.Headers.CacheControl = "no-store";
+    try
+    {
+        var options = configuration.GetSection("WorkshopEvents")
+            .Get<WorkshopEventOptions>(binding => binding.ErrorOnUnknownConfiguration = true) ?? new();
+        options.Validate();
+        return Results.Ok(options);
+    }
+    catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+    {
+        logger.LogWarning("Die Ereigniskonfiguration ist ungültig: {Message}", exception.Message);
+        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Die Ereigniskonfiguration ist nicht verfügbar.");
+    }
+});
+app.MapGet("/play", (IWebHostEnvironment environment, HttpContext context) => MapClientPage(environment, context, "play.html"));
+app.MapGet("/watcher", (IWebHostEnvironment environment, HttpContext context) => MapClientPage(environment, context, "watcher.html"));
 app.MapHub<GameHub>("/gameHub");
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
@@ -94,8 +113,9 @@ if (openPlayer || openWatcher)
 
 app.Run();
 
-static IResult MapClientPage(IWebHostEnvironment environment, string pageName)
+static IResult MapClientPage(IWebHostEnvironment environment, HttpContext context, string pageName)
 {
+    context.Response.Headers.CacheControl = "no-store";
     var builtPage = Path.Combine(environment.WebRootPath, "client", "dist", pageName);
     var fallbackPage = Path.Combine(environment.WebRootPath, pageName);
     var pagePath = File.Exists(builtPage) ? builtPage : fallbackPage;

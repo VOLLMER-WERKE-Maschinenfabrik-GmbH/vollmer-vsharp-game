@@ -1,6 +1,8 @@
 import { createElement, Gauge, Waypoints, PanelTop, Stamp, Wrench, ShieldCheck, Settings, Egg, Zap, Cog, RotateCcw, Ruler, Volume2, Volume1, VolumeX, Hand, X, type IconNode } from "lucide";
 
 type ShellCommand = "start" | "laser" | "saw";
+type WorkshopEventSettings = { enabled: boolean; durationMilliseconds: number; cooldownMilliseconds: number };
+type WorkshopEventOptions = { enabled: boolean; events: Record<string, WorkshopEventSettings> };
 type ShellState = {
     score: number;
     combo: number;
@@ -23,6 +25,11 @@ export class MachineShell {
     private demonstration = false;
     private state?: ShellState;
     private eventTimer?: ReturnType<typeof setTimeout>;
+    private readonly eventButtons = new Map<string, HTMLButtonElement>();
+    private readonly eventCooldowns = new Map<string, number>();
+    private eventCooldownTimer?: ReturnType<typeof setTimeout>;
+    private eventOptions?: WorkshopEventOptions;
+    private eventConfigurationUnavailable = false;
     private commandHandler: (command: ShellCommand) => void = () => {};
     private soundHandler: (volume: number) => void = () => {};
     private actionTimer?: ReturnType<typeof setTimeout>;
@@ -112,10 +119,12 @@ export class MachineShell {
             button.className = "event-button";
             button.title = label;
             button.setAttribute("aria-label", label);
-            button.disabled = watcher;
+            button.disabled = true;
+            button.dataset.event = effect;
             button.append(this.icon(icon));
             button.addEventListener("click", () => this.triggerEvent(button, effect), { signal: this.controller.signal });
             this.root.querySelector(".event-rail")!.append(button);
+            this.eventButtons.set(effect, button);
         }
         const drawer = this.root.querySelector<HTMLButtonElement>(".event-drawer-toggle")!;
         drawer.append(this.icon(Settings));
@@ -138,6 +147,7 @@ export class MachineShell {
         this.setEnabled("highscore", false);
         for (const button of this.commands.get("highscore")!) button.title = "Highscore – noch nicht verfügbar";
         for (const command of ["start", "laser", "saw"]) this.setEnabled(command, false);
+        if (!watcher) void this.loadEventOptions();
     }
 
     bind(onCommand: (command: ShellCommand) => void, onSound: (volume: number) => void): void {
@@ -182,8 +192,9 @@ export class MachineShell {
 
     setError(message: string): void {
         const error = this.root.querySelector<HTMLElement>(".shell-error")!;
-        error.textContent = message;
-        error.hidden = !message;
+        const visibleMessage = message || (this.eventConfigurationUnavailable ? "Werkstatt-Spielereien sind derzeit nicht verfügbar." : "");
+        error.textContent = visibleMessage;
+        error.hidden = !visibleMessage;
     }
 
     animateAction(point: { x: number; y: number }, success: boolean): void {
@@ -205,6 +216,7 @@ export class MachineShell {
     destroy(): void {
         this.controller.abort();
         clearTimeout(this.eventTimer);
+        clearTimeout(this.eventCooldownTimer);
         clearTimeout(this.actionTimer);
     }
 
@@ -244,13 +256,59 @@ export class MachineShell {
     }
 
     private triggerEvent(button: HTMLButtonElement, effect: string): void {
-        if (this.root.dataset.effect) return;
+        const options = this.eventOptions?.events[effect];
+        if (this.watcher || !this.eventOptions?.enabled || !options?.enabled || button.disabled || this.root.dataset.effect) return;
+        if ((this.eventCooldowns.get(effect) ?? 0) > performance.now()) return;
+        this.eventCooldowns.set(effect, performance.now() + options.durationMilliseconds + options.cooldownMilliseconds);
         this.root.dataset.effect = effect;
+        this.root.style.setProperty("--event-duration", `${options.durationMilliseconds}ms`);
         button.classList.add("is-active");
+        this.refreshEventButtons();
         this.eventTimer = setTimeout(() => {
             delete this.root.dataset.effect;
             button.classList.remove("is-active");
-        }, 1400);
+            this.refreshEventButtons();
+        }, options.durationMilliseconds);
+    }
+
+    private async loadEventOptions(): Promise<void> {
+        try {
+            const response = await fetch("/api/workshop-events", { signal: this.controller.signal, cache: "no-store" });
+            if (!response.ok) throw new Error();
+            const options: unknown = await response.json();
+            if (typeof options !== "object" || options === null) throw new Error();
+            const candidate = options as WorkshopEventOptions;
+            if (typeof candidate.enabled !== "boolean" || typeof candidate.events !== "object" || candidate.events === null
+                || Object.keys(candidate.events).length !== this.eventButtons.size
+                || [...this.eventButtons.keys()].some(name => {
+                    const event = candidate.events[name];
+                    return !event || typeof event.enabled !== "boolean" || !Number.isInteger(event.durationMilliseconds)
+                        || event.durationMilliseconds < 1 || event.durationMilliseconds > 2000
+                        || !Number.isInteger(event.cooldownMilliseconds) || event.cooldownMilliseconds < 0 || event.cooldownMilliseconds > 60000;
+                })) throw new Error();
+            this.eventOptions = candidate;
+            this.refreshEventButtons();
+        } catch {
+            if (!this.controller.signal.aborted) {
+                this.eventConfigurationUnavailable = true;
+                this.setError("");
+            }
+        }
+    }
+
+    private refreshEventButtons(): void {
+        clearTimeout(this.eventCooldownTimer);
+        const now = performance.now();
+        let nextExpiration = Number.POSITIVE_INFINITY;
+        for (const [name, button] of this.eventButtons) {
+            const expiresAt = this.eventCooldowns.get(name) ?? 0;
+            button.disabled = this.watcher || !this.eventOptions?.enabled || !this.eventOptions.events[name]?.enabled
+                || Boolean(this.root.dataset.effect) || expiresAt > now;
+            if (expiresAt > now) nextExpiration = Math.min(nextExpiration, expiresAt);
+        }
+        if (Number.isFinite(nextExpiration)) {
+            this.eventCooldownTimer = setTimeout(() => this.refreshEventButtons(), Math.max(1, nextExpiration - now));
+        }
     }
 
     private updateSoundButton(): void {

@@ -16,5 +16,18 @@
   "stageAreaX": 0.05,
   "stageAreaY": 0.28,
   "stageAreaWidth": 0.9,
-  "stageAreaHeight": 0.64
+  "stageAreaHeight": 0.64,
+  "workshopEvents": {
+    "enabled": true,
+    "events": {
+      "gauge": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "conveyor": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "wiper": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "stamp": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "tool": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "shield": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "drive": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "egg": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 }
+    }
+  }
 }

@@ -5,11 +5,14 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VGame.Contracts;
 using VGame.Server.Security;
+using VGame.Server.Services;
+using System.Net.Http.Json;
 
 namespace VGame.Server.Tests;
 
@@ -18,6 +21,121 @@ namespace VGame.Server.Tests;
 public sealed class GameHubIntegrationTests
 {
     public TestContext TestContext { get; set; }
+
+    [TestMethod]
+    [DataRow("/play")]
+    [DataRow("/watcher")]
+    public async Task ClientPages_DisableCachingAcrossPublishedUpdates(string requestPath)
+    {
+        // Prüft den Cache-Schutz der HTML-Einstiegspunkte, damit neue Paketstände keine alten Bundle-Verweise übernehmen.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync(requestPath, TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.IsTrue(response.Headers.CacheControl?.NoStore);
+    }
+
+    [TestMethod]
+    public async Task WorkshopEvents_ReturnsOnlyValidatedVisitorConfiguration()
+    {
+        // Prüft den öffentlichen Konfigurationsabruf ohne Freigabe der vollständigen Spielkonfiguration.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/workshop-events", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.IsTrue(response.Headers.CacheControl?.NoStore);
+        var options = await response.Content.ReadFromJsonAsync<WorkshopEventOptions>(TestContext.CancellationToken);
+        Assert.IsNotNull(options);
+        options.Validate();
+        Assert.HasCount(8, options.Events);
+        Assert.AreEqual(1400, options.Events["gauge"].DurationMilliseconds);
+        Assert.AreEqual(3000, options.Events["gauge"].CooldownMilliseconds);
+        var json = await response.Content.ReadAsStringAsync(TestContext.CancellationToken);
+        Assert.DoesNotContain("roundDurationSeconds", json);
+        Assert.DoesNotContain("artwork", json);
+    }
+
+    [TestMethod]
+    [DataRow(1, 0)]
+    [DataRow(2000, 60000)]
+    public void WorkshopEvents_ValidBoundarySettingsAreAccepted(int durationMilliseconds, int cooldownMilliseconds)
+    {
+        // Prüft die zulässigen Grenzwerte auch bei global deaktivierten Spielereien.
+        var options = new WorkshopEventOptions { Enabled = false };
+        options.Events["gauge"] = new() { Enabled = false, DurationMilliseconds = durationMilliseconds, CooldownMilliseconds = cooldownMilliseconds };
+        options.Validate();
+        Assert.IsFalse(options.Enabled);
+        Assert.IsFalse(options.Events["gauge"].Enabled);
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task WorkshopEvents_ConfigurationChangesAreReturnedOnNextRequest(bool enabled)
+    {
+        // Prüft geänderte Freigaben und Zeiten beim nächsten Abruf ohne Neustart des Hosts.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        var configuration = factory.Services.GetRequiredService<IConfiguration>();
+        configuration["WorkshopEvents:Enabled"] = enabled.ToString();
+        configuration["WorkshopEvents:Events:gauge:Enabled"] = "false";
+        configuration["WorkshopEvents:Events:gauge:DurationMilliseconds"] = "2000";
+        configuration["WorkshopEvents:Events:gauge:CooldownMilliseconds"] = "10000";
+
+        var options = await client.GetFromJsonAsync<WorkshopEventOptions>("/api/workshop-events", TestContext.CancellationToken);
+        Assert.IsNotNull(options);
+        Assert.AreEqual(enabled, options.Enabled);
+        Assert.IsFalse(options.Events["gauge"].Enabled);
+        Assert.AreEqual(2000, options.Events["gauge"].DurationMilliseconds);
+        Assert.AreEqual(10000, options.Events["gauge"].CooldownMilliseconds);
+    }
+
+    [TestMethod]
+    [DataRow("0")]
+    [DataRow("2001")]
+    [DataRow("invalid")]
+    public async Task WorkshopEvents_InvalidRuntimeConfigurationReturnsServiceUnavailable(string durationMilliseconds)
+    {
+        // Prüft eine sichere Fehlerantwort bei ungültigen Laufzeitwerten ohne Auslieferung von Konfigurationsdetails.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        factory.Services.GetRequiredService<IConfiguration>()["WorkshopEvents:Events:gauge:DurationMilliseconds"] = durationMilliseconds;
+        using var response = await client.GetAsync("/api/workshop-events", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var problem = await response.Content.ReadAsStringAsync(TestContext.CancellationToken);
+        Assert.DoesNotContain("DurationMilliseconds", problem);
+        Assert.DoesNotContain("ArgumentException", problem);
+        Assert.DoesNotContain("InvalidOperationException", problem);
+    }
+
+    [TestMethod]
+    [DataRow(0, 0)]
+    [DataRow(2001, 0)]
+    [DataRow(1400, -1)]
+    [DataRow(1400, 60001)]
+    public void WorkshopEvents_InvalidTimingIsRejected(int durationMilliseconds, int cooldownMilliseconds)
+    {
+        // Prüft die Ablehnung ungültiger Effektdauern und Cooldowns.
+        var options = new WorkshopEventOptions();
+        options.Events["gauge"] = new() { DurationMilliseconds = durationMilliseconds, CooldownMilliseconds = cooldownMilliseconds };
+        Assert.ThrowsExactly<ArgumentException>(options.Validate);
+    }
+
+    [TestMethod]
+    public void WorkshopEvents_UnknownMissingAndNullProfilesAreRejected()
+    {
+        // Prüft unbekannte, fehlende und leere Ereignisprofile statt stiller Ersatzwerte.
+        var options = new WorkshopEventOptions();
+        options.Events.Remove("gauge");
+        Assert.ThrowsExactly<ArgumentException>(options.Validate);
+        options.Events["unknown"] = new();
+        Assert.ThrowsExactly<ArgumentException>(options.Validate);
+        options.Events.Remove("unknown");
+        options.Events["gauge"] = null!;
+        Assert.ThrowsExactly<ArgumentException>(options.Validate);
+        Assert.ThrowsExactly<ArgumentException>(new WorkshopEventOptions { Events = null! }.Validate);
+    }
 
     [TestMethod]
     [DataRow("background/bg_0001.webp")]

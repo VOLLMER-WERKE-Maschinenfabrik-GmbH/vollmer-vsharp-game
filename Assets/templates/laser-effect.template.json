@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [{ "$ref": "asset.common.schema.json" }],
+  "type": "object",
+  "properties": { "assetId": { "pattern": "^fx_[0-9]{4}$" }, "category": { "const": "laser-effect" } },
+  "x-imageNorm": { "directory": "animations/laser", "formats": ["png"], "transparent": true },
+  "x-requiredCompanionFormat": "json"
+}
