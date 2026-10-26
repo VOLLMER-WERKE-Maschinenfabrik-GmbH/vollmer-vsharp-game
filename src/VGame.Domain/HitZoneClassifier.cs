@@ -63,10 +63,10 @@ public static class HitZoneClassifier
         return points.Select(point =>
         {
             var localX = (point.X - 0.5) * tool.Definition.BoundingWidthNormalized;
-            var localY = (point.Y - 0.5) * tool.Definition.BoundingHeightNormalized;
+            var localY = (point.Y - 0.5) * tool.Definition.BoundingHeightNormalized / ToolGeometry.CanvasAspectRatio;
             return new Point2(
                 placement.Center.X + localX * cosine - localY * sine,
-                placement.Center.Y + localX * sine + localY * cosine);
+                placement.Center.Y + (localX * sine + localY * cosine) * ToolGeometry.CanvasAspectRatio);
         }).ToArray();
     }
 

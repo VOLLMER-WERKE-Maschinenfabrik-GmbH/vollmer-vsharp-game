@@ -66,15 +66,16 @@ public sealed class PrototypeToolSpawnerService(
 
     private ToolPlacement? CreatePlacement(IReadOnlyList<ToolSnapshot> activeTools, int spawnSequence, double width, double height)
     {
-        var minimumX = options.StageAreaX + width / 2;
-        var maximumX = options.StageAreaX + options.StageAreaWidth - width / 2;
-        var minimumY = options.StageAreaY + height / 2;
-        var maximumY = options.StageAreaY + options.StageAreaHeight - height / 2;
+        var halfExtents = ToolGeometry.HalfExtents(width, height, 0, true);
+        var minimumX = options.StageAreaX + halfExtents.X;
+        var maximumX = options.StageAreaX + options.StageAreaWidth - halfExtents.X;
+        var minimumY = options.StageAreaY + halfExtents.Y;
+        var maximumY = options.StageAreaY + options.StageAreaHeight - halfExtents.Y;
         var stageArea = options.StageAreaWidth * options.StageAreaHeight;
         var requestedArea = width * height;
         var usedArea = activeTools.Sum(tool => tool.Definition.BoundingWidthNormalized * tool.Definition.BoundingHeightNormalized);
 
-        if ((usedArea + requestedArea) / stageArea > options.MaxStageCoverage)
+        if (minimumX >= maximumX || minimumY >= maximumY || (usedArea + requestedArea) / stageArea > options.MaxStageCoverage)
         {
             return null;
         }
@@ -101,7 +102,8 @@ public sealed class PrototypeToolSpawnerService(
                 new Point2(centerX + direction * horizontalRange * 0.7, minimumY + verticalRange * (secondBand + Random.Shared.NextDouble() * 0.3)),
                 new Point2(direction > 0 ? maximumX : minimumX, minimumY + verticalRange * (0.15 + Random.Shared.NextDouble() * 0.7)),
                 horizontalRange / Math.Abs(horizontalSpeed));
-            return new ToolPlacement(center, 0, 0, 0, curve);
+            var angularSpeed = (Random.Shared.Next(2) == 0 ? -1 : 1) * (12 + Random.Shared.NextDouble() * 18);
+            return new ToolPlacement(center, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: angularSpeed);
         }
 
         return null;
@@ -118,6 +120,8 @@ public sealed class PrototypeToolSpawnerService(
             * Math.Max(Math.Max(width, height), Math.Max(other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized));
         var distanceX = center.X - other.Placement.Center.X;
         var distanceY = center.Y - other.Placement.Center.Y;
-        return distanceX * distanceX + distanceY * distanceY < minimumDistance * minimumDistance;
+        return distanceX * distanceX + distanceY * distanceY < minimumDistance * minimumDistance
+            || ToolGeometry.RotationEnvelopesOverlap(width, height, other.Definition.BoundingWidthNormalized,
+                other.Definition.BoundingHeightNormalized, distanceX, distanceY, options.MinTargetSpacingFactor);
     }
 }

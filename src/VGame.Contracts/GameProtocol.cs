@@ -77,7 +77,8 @@ public sealed record ToolPlacement(
     double VelocityYPerSecond,
     double RotationDegrees,
     CubicBezierPath? Curve = null,
-    double CurveTimeSeconds = 0);
+    double CurveTimeSeconds = 0,
+    double AngularVelocityDegreesPerSecond = 0);
 
 public sealed record CubicBezierPath(Point2 Start, Point2 FirstControl, Point2 SecondControl, Point2 End, double DurationSeconds);
 

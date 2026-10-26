@@ -9,6 +9,88 @@ namespace VGame.Domain.Tests;
 public sealed class GameEngineTests
 {
     [TestMethod]
+    [DataRow(24, 350, 14, true)]
+    [DataRow(-24, 10, 346, true)]
+    [DataRow(24, 350, 14, false)]
+    [DataRow(-24, 10, 346, false)]
+    [DataRow(0, 30, 30, true)]
+    public void Rotation_AdvancesInBothDirectionsAndWraps(double speed, double initial, double expected, bool curved)
+    {
+        // Prüft unabhängige Rechts-/Linksdrehung, Winkelüberlauf und den kompatiblen stillstehenden Standard.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(time);
+        var curve = new CubicBezierPath(new(0.25, 0.6), new(0.4, 0.7), new(0.6, 0.5), new(0.75, 0.6), 4);
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("rotation"), new(curve.Start, 0, 0, initial, curved ? curve : null, AngularVelocityDegreesPerSecond: speed)));
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.AreEqual(expected, engine.AdvanceClock()!.Tools[0].Placement!.RotationDegrees, 1e-9);
+    }
+
+    [TestMethod]
+    [DataRow(double.NaN)]
+    [DataRow(double.PositiveInfinity)]
+    [DataRow(181)]
+    [DataRow(-181)]
+    public void Rotation_InvalidAngularSpeedIsRejected(double speed)
+    {
+        // Prüft ungültige oder überhöhte Winkelgeschwindigkeiten vor der Registrierung.
+        var engine = CreateRunningEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(CreateSmallTool("rotation"),
+            new(new(0.5, 0.6), 0, 0, 0, AngularVelocityDegreesPerSecond: speed)));
+    }
+
+    [TestMethod]
+    public void Rotation_RequiresClearanceForEntireTurnAndCurve()
+    {
+        // Prüft den Freiraum der ganzen Drehung statt ausschließlich der ungedrehten Startbox.
+        var engine = CreateRunningEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+        var definition = CreateSmallTool("rotation");
+        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(definition,
+            new(new(0.13, 0.6), 0, 0, 0, AngularVelocityDegreesPerSecond: 24)));
+        var curve = new CubicBezierPath(new(0.25, 0.6), new(0.4, 0.36), new(0.6, 0.6), new(0.75, 0.6), 4);
+        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(definition,
+            new(curve.Start, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: -24)));
+    }
+
+    [TestMethod]
+    public void Rotation_BlockedCurveKeepsTurningWithoutReversingSpin()
+    {
+        // Prüft Drehfortschritt trotz Kurvenblockierung sowie den physischen Mindestabstand der Drehhüllen.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(time);
+        var curve = new CubicBezierPath(new(0.25, 0.6), new(0.4, 0.6), new(0.6, 0.6), new(0.75, 0.6), 4);
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("rotation"), new(curve.Start, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: -24)));
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("blocker"), new(new(0.5, 0.6), 0, 0, 0)));
+        Assert.IsFalse(engine.RegisterTool(CreateSmallTool("vertical-overlap"), new(new(0.64, 0.76), 0, 0, 0, AngularVelocityDegreesPerSecond: 24)));
+        time.Advance(TimeSpan.FromSeconds(2));
+        var rotated = engine.AdvanceClock()!.Tools.Single(tool => tool.Definition.ToolId == "rotation").Placement!;
+        Assert.AreEqual(curve.Start, rotated.Center);
+        Assert.AreEqual(312d, rotated.RotationDegrees, 1e-9);
+        Assert.AreEqual(-24d, rotated.AngularVelocityDegreesPerSecond);
+    }
+
+    [TestMethod]
+    [DataRow(45, false, Outcome.Success, 0.0288)]
+    [DataRow(90, false, Outcome.Success, 0.035)]
+    [DataRow(270, false, Outcome.Success, 0.035)]
+    [DataRow(90, true, Outcome.WrongSharpening, 0.035)]
+    [DataRow(90, false, Outcome.WrongSharpening, 0.025)]
+    [DataRow(0, false, Outcome.WrongSharpening, 0.025)]
+    public void Rotation_SawSwipeFollowsVisibleCutDirection(double degrees, bool reverse, Outcome expected, double length)
+    {
+        // Prüft Swipes entlang gedrehter Schneiden, falsche Gegenrichtung und winkelunabhängige Mindestlänge.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateSawEngine(time);
+        var definition = CreateSmallTool("tool-1");
+        Assert.IsTrue(engine.RegisterTool(definition, new(new(0.5, 0.6), 0, 0, degrees)));
+        var angle = degrees * Math.PI / 180;
+        var points = new[] { 0.005, 0.005 + length }.Select(distance => new Point2(0.5 + distance * Math.Cos(angle),
+            0.6 + distance * Math.Sin(angle) * ToolGeometry.CanvasAspectRatio)).ToArray();
+        if (reverse) Array.Reverse(points);
+        var result = engine.ResolveAction(CreateSwipeRequest("player", engine.GetSnapshot().RoundId!.Value, 1, points, time.GetUtcNow()));
+        Assert.AreEqual(expected, result.Resolution!.Outcome);
+    }
+
+    [TestMethod]
     public void Bezier_MovingCurvesPreserveSpacingAndAuthoritativeHitZones()
     {
         // Prüft Abstandssicherheit zweier kreuzender Kurven und Trefferwertung an der tatsächlich bewegten Position.

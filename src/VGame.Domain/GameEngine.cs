@@ -530,6 +530,11 @@ public sealed class GameEngine
 
             var definition = tool.Definition;
             var placement = tool.Placement;
+            if (placement.AngularVelocityDegreesPerSecond != 0)
+            {
+                var rotation = (placement.RotationDegrees + placement.AngularVelocityDegreesPerSecond * elapsedSeconds) % 360;
+                placement = placement with { RotationDegrees = (rotation + 360) % 360 };
+            }
             if (placement.Curve is not null)
             {
                 var curvedPlacement = BezierMotion.Advance(placement, elapsedSeconds);
@@ -547,10 +552,12 @@ public sealed class GameEngine
                 }
                 continue;
             }
-            var minimumX = _options.StageAreaX + definition.BoundingWidthNormalized / 2;
-            var maximumX = _options.StageAreaX + _options.StageAreaWidth - definition.BoundingWidthNormalized / 2;
-            var minimumY = _options.StageAreaY + definition.BoundingHeightNormalized / 2;
-            var maximumY = _options.StageAreaY + _options.StageAreaHeight - definition.BoundingHeightNormalized / 2;
+            var halfExtents = ToolGeometry.HalfExtents(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
+                placement.RotationDegrees, placement.AngularVelocityDegreesPerSecond != 0);
+            var minimumX = _options.StageAreaX + halfExtents.X;
+            var maximumX = _options.StageAreaX + _options.StageAreaWidth - halfExtents.X;
+            var minimumY = _options.StageAreaY + halfExtents.Y;
+            var maximumY = _options.StageAreaY + _options.StageAreaHeight - halfExtents.Y;
             var nextX = placement.Center.X + placement.VelocityXPerSecond * elapsedSeconds;
             var nextY = placement.Center.Y + placement.VelocityYPerSecond * elapsedSeconds;
             var velocityX = placement.VelocityXPerSecond;
@@ -627,10 +634,10 @@ public sealed class GameEngine
             return Outcome.WrongSharpening;
         }
 
-        var pathLength = GetPathLength(gesture.Points);
+        var pathLength = GetPathLength(gesture.Points, tool.Placement?.RotationDegrees ?? 0);
         var requiredLength = _options.MinStrokeLengthNormalized
             * Math.Max(tool.Definition.BoundingWidthNormalized, tool.Definition.BoundingHeightNormalized);
-        var directionDifference = GetDirectionDifference(gesture.Points, tool.Definition.CutDirectionDegrees);
+        var directionDifference = GetDirectionDifference(gesture.Points, tool.Definition.CutDirectionDegrees + (tool.Placement?.RotationDegrees ?? 0));
         return pathLength + GeometryEpsilon >= requiredLength
             && directionDifference <= _options.MaxAngleDeviationDeg + GeometryEpsilon
             ? Outcome.Success
@@ -662,14 +669,19 @@ public sealed class GameEngine
         };
     }
 
-    private static double GetPathLength(IReadOnlyList<Point2> points)
+    private static double GetPathLength(IReadOnlyList<Point2> points, double rotationDegrees)
     {
         var totalLength = 0d;
+        var angle = rotationDegrees * Math.PI / 180;
+        var cosine = Math.Cos(angle);
+        var sine = Math.Sin(angle);
         for (var index = 1; index < points.Count; index++)
         {
-            totalLength += Math.Sqrt(
-                Math.Pow(points[index].X - points[index - 1].X, 2)
-                + Math.Pow(points[index].Y - points[index - 1].Y, 2));
+            var horizontal = points[index].X - points[index - 1].X;
+            var vertical = (points[index].Y - points[index - 1].Y) / ToolGeometry.CanvasAspectRatio;
+            var localHorizontal = horizontal * cosine + vertical * sine;
+            var localVertical = (-horizontal * sine + vertical * cosine) * ToolGeometry.CanvasAspectRatio;
+            totalLength += Math.Sqrt(localHorizontal * localHorizontal + localVertical * localVertical);
         }
 
         return totalLength;
@@ -686,7 +698,7 @@ public sealed class GameEngine
             return 180;
         }
 
-        var directionDegrees = Math.Atan2(deltaY, deltaX) * 180 / Math.PI;
+        var directionDegrees = Math.Atan2(deltaY / ToolGeometry.CanvasAspectRatio, deltaX) * 180 / Math.PI;
         var difference = Math.Abs((directionDegrees - cutDirectionDegrees) % 360);
         return difference > 180 ? 360 - difference : difference;
     }
@@ -758,16 +770,17 @@ public sealed class GameEngine
             || Math.Abs(placement.VelocityXPerSecond) > 1
             || !double.IsFinite(placement.VelocityYPerSecond)
             || Math.Abs(placement.VelocityYPerSecond) > 1
-            || !double.IsFinite(placement.RotationDegrees))
+            || !double.IsFinite(placement.RotationDegrees)
+            || !double.IsFinite(placement.AngularVelocityDegreesPerSecond)
+            || Math.Abs(placement.AngularVelocityDegreesPerSecond) > 180)
         {
             throw new ArgumentException("Tool placement contains invalid normalized coordinates or velocities.", nameof(placement));
         }
 
-        var angleRadians = placement.RotationDegrees * Math.PI / 180;
-        var cosine = Math.Abs(Math.Cos(angleRadians));
-        var sine = Math.Abs(Math.Sin(angleRadians));
-        var halfWidth = (cosine * definition.BoundingWidthNormalized + sine * definition.BoundingHeightNormalized) / 2;
-        var halfHeight = (sine * definition.BoundingWidthNormalized + cosine * definition.BoundingHeightNormalized) / 2;
+        var halfExtents = ToolGeometry.HalfExtents(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
+            placement.RotationDegrees, placement.AngularVelocityDegreesPerSecond != 0);
+        var halfWidth = halfExtents.X;
+        var halfHeight = halfExtents.Y;
         const double boundaryRoundingTolerance = 1e-12;
         if (placement.Center.X - halfWidth < options.StageAreaX - boundaryRoundingTolerance
             || placement.Center.X + halfWidth > options.StageAreaX + options.StageAreaWidth + boundaryRoundingTolerance
@@ -811,7 +824,11 @@ public sealed class GameEngine
                     Math.Max(other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized));
             var deltaX = placement.Center.X - other.Placement.Center.X;
             var deltaY = placement.Center.Y - other.Placement.Center.Y;
-            return deltaX * deltaX + deltaY * deltaY < minimumDistance * minimumDistance;
+            return deltaX * deltaX + deltaY * deltaY < minimumDistance * minimumDistance
+                || ((placement.AngularVelocityDegreesPerSecond != 0 || other.Placement.AngularVelocityDegreesPerSecond != 0)
+                    && ToolGeometry.RotationEnvelopesOverlap(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
+                        other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized,
+                        deltaX, deltaY, _options.MinTargetSpacingFactor));
         });
     }
 

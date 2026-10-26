@@ -8,6 +8,25 @@ namespace VGame.Domain.Tests;
 public sealed class HitZoneClassifierTests
 {
     [TestMethod]
+    [DataRow(90)]
+    [DataRow(-90)]
+    [DataRow(45)]
+    public void FindFirstContact_RotationMatchesSixteenByNineDisplay(double degrees)
+    {
+        // Prüft die sichtbare Schneidenposition bei Drehung auf der nicht quadratischen 1280×720-Spielfläche.
+        var definition = CreateTool("rotated-display", 0,
+            Rectangle(0.2, 0.2, 0.5, 0.8, "shaft", HitZoneRole.Shaft),
+            Rectangle(0.5, 0.2, 0.9, 0.8, "cut", HitZoneRole.Cut)) with { BoundingWidthNormalized = 0.2, BoundingHeightNormalized = 0.04 };
+        var angle = degrees * Math.PI / 180;
+        var localHorizontal = (0.8 - 0.5) * definition.BoundingWidthNormalized;
+        var point = new Point2(0.5 + localHorizontal * Math.Cos(angle), 0.6 + localHorizontal * Math.Sin(angle) * 16 / 9);
+        var placement = new ToolPlacement(new Point2(0.5, 0.6), 0, 0, degrees);
+        var contact = HitZoneClassifier.FindFirstContact([new ToolSnapshot(definition, ToolState.Dull, placement)], [point], 0);
+        Assert.IsNotNull(contact);
+        Assert.AreEqual(HitZoneRole.Cut, contact.HitZone.Role);
+    }
+
+    [TestMethod]
     public void FindFirstContact_SwipeStartsInSmallCut_IsNotStolenByShaftTolerance()
     {
         // Prüft einen bereits in der Säge-Schneide begonnenen Swipe trotz toleranznahen Blattkörpers.

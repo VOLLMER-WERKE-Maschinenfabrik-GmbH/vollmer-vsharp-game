@@ -30,7 +30,7 @@ public sealed class GameHubIntegrationTests
     [Timeout(15000, CooperativeCancellation = true)]
     public async Task PrototypeSpawner_BroadcastsMovingBezierTargets()
     {
-        // Prüft die tatsächliche Verdrahtung von Rundenstart, Spawner, Kurvenbewegung und gemeinsamen Snapshots.
+        // Prüft Rundenstart, Spawner und gemeinsame Snapshots mit Kurvenbewegung und zufälliger Drehrichtung/-geschwindigkeit.
         await using var factory = CreateFactory();
         await using var connection = CreateConnection(factory);
         var spawned = new TaskCompletionSource<ToolSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -52,6 +52,9 @@ public sealed class GameHubIntegrationTests
         Assert.IsGreaterThan(0d, later.Placement!.CurveTimeSeconds);
         Assert.AreNotEqual(first.Placement.Center, later.Placement.Center);
         Assert.AreEqual(first.Placement.Curve, later.Placement.Curve);
+        Assert.IsInRange(12d, 30d, Math.Abs(first.Placement.AngularVelocityDegreesPerSecond));
+        Assert.AreEqual(first.Placement.AngularVelocityDegreesPerSecond, later.Placement.AngularVelocityDegreesPerSecond);
+        Assert.AreNotEqual(first.Placement.RotationDegrees, later.Placement.RotationDegrees);
     }
 
     [TestMethod]
