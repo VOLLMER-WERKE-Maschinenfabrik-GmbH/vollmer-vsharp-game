@@ -1,6 +1,7 @@
 # Autorenquellen und Aufbereitungscode werden versioniert; Rohbilder und Master bleiben ausgeschlossen.
 !/.gitignore
 !/prepare-artwork.mjs
+!/prepare-faces.mjs
 !/assets/
 !/plan/
 !/zone-authoring/

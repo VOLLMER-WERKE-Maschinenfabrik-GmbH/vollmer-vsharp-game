@@ -90,6 +90,7 @@ class WorkshopScene extends Phaser.Scene {
     private audio?: GameAudio;
     private readonly resolvedEvents = new Set<string>();
     private startingRound = false;
+    private readonly faceVariants: Record<ToolState, string[]> = { dull: [], inProgress: [], sharp: [], failed: [] };
 
     constructor(requestedRole: ClientRole, private readonly shell: MachineShell) {
         super({ key: `workshop-${requestedRole}` });
@@ -106,6 +107,19 @@ class WorkshopScene extends Phaser.Scene {
         for (const assetId of ["tool_0002", "tool_0006", "tool_0010"]) {
             this.load.image(assetId, `/Assets/images/tools/${assetId}.webp`);
         }
+        this.load.once("filecomplete-json-face-catalog", () => {
+            const catalog = this.cache.json.get("face-catalog") as { version: number; states: Record<ToolState, string[]> };
+            if (catalog?.version !== 1) return;
+            for (const state of Object.keys(this.faceVariants) as ToolState[]) {
+                for (const filename of catalog.states[state] ?? []) {
+                    if (!/^face_[a-zA-Z0-9_]+\.webp$/.test(filename)) continue;
+                    const key = filename.slice(0, -5);
+                    this.faceVariants[state].push(key);
+                    this.load.image(key, `/Assets/images/faces/${filename}`);
+                }
+            }
+        });
+        this.load.json("face-catalog", "/Assets/images/faces/catalog.json");
     }
 
     create(): void {
@@ -396,10 +410,13 @@ class WorkshopScene extends Phaser.Scene {
             graphics.fillStyle(0x52dcf5, 1).fillCircle(width * 0.34, -height * 0.15, 5);
         }
 
+        this.drawImageFace(container, tool.definition, visualState, width, height);
+        const face = container.getByName("face-overlay") as Phaser.GameObjects.Image | null;
+        const labelVertical = Math.max(height * 0.5, face?.visible ? face.y + face.displayHeight * 0.5 : 0) + 6;
         const label = visualState === "dull" ? "STUMPF" : visualState === "inProgress" ? "SCHLIFF" : visualState === "sharp" ? "SCHARF" : "DEFEKT";
         const stateLabel = container.getByName("state-label") as Phaser.GameObjects.Text | null;
         if (stateLabel === null) {
-            container.add(this.add.text(0, height * 0.5 + 3, label, {
+            container.add(this.add.text(0, labelVertical, label, {
                 color: "#202426",
                 backgroundColor: "#ffdda6",
                 padding: { x: 4, y: 2 },
@@ -408,8 +425,27 @@ class WorkshopScene extends Phaser.Scene {
                 fontStyle: "bold"
             }).setOrigin(0.5).setName("state-label"));
         } else {
-            stateLabel.setText(label);
+            stateLabel.setText(label).setPosition(0, labelVertical);
         }
+    }
+
+    private drawImageFace(container: Phaser.GameObjects.Container, definition: ToolDefinition, state: ToolState, width: number, height: number): void {
+        const variants = this.faceVariants[state].filter(key => this.textures.exists(key));
+        let face = container.getByName("face-overlay") as Phaser.GameObjects.Image | null;
+        if (variants.length === 0) { face?.setVisible(false); return; }
+        let seed = 2166136261;
+        for (const character of definition.toolId) seed = Math.imul(seed ^ character.charCodeAt(0), 16777619);
+        const key = variants[(seed >>> 0) % variants.length];
+        if (!face) {
+            face = this.add.image(0, 0, key).setName("face-overlay");
+            container.add(face);
+        }
+        face.setTexture(key).setVisible(true);
+        const image = this.textures.get(key).getSourceImage() as HTMLImageElement;
+        const displayWidth = width * (definition.visualKind === "saw" ? 0.52 : 0.42);
+        const displayHeight = displayWidth * image.height / image.width;
+        face.setDisplaySize(displayWidth, displayHeight)
+            .setPosition(definition.visualKind === "saw" ? 0 : -width * 0.11, definition.visualKind === "saw" ? -height * 0.17 : 0);
     }
 
     private stateTexture(definition: ToolDefinition, state: ToolState): string {
@@ -454,7 +490,7 @@ class WorkshopScene extends Phaser.Scene {
             context.restore();
         }
         const shaft = definition.hitZones.find(zone => zone.role === "shaft");
-        if (shaft) {
+        if (shaft && !this.faceVariants[state].some(key => this.textures.exists(key))) {
             context.save();
             context.globalCompositeOperation = "source-over";
             this.drawFace(context, source.width, source.height, state, definition.visualKind);

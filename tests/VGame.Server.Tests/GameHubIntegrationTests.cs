@@ -27,6 +27,31 @@ public sealed class GameHubIntegrationTests
     public TestContext TestContext { get; set; }
 
     [TestMethod]
+    public async Task FaceImages_AllStateVariantsAreServedFromCanonicalAssets()
+    {
+        // Prüft die tatsächliche Auslieferung aller gelieferten Zustandsvarianten aus dem zentralen Laufzeitpfad.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/Assets/images/faces/catalog.json", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+        using var catalog = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.CancellationToken));
+        Assert.AreEqual(1, catalog.RootElement.GetProperty("version").GetInt32());
+        var expected = new Dictionary<string, int> { ["dull"] = 12, ["inProgress"] = 4, ["sharp"] = 8, ["failed"] = 8 };
+        foreach (var state in catalog.RootElement.GetProperty("states").EnumerateObject())
+        {
+            Assert.AreEqual(expected[state.Name], state.Value.GetArrayLength());
+            foreach (var filename in state.Value.EnumerateArray())
+            {
+                Assert.MatchesRegex("^face_[a-zA-Z0-9_]+\\.webp$", filename.GetString()!);
+                using var image = await client.GetAsync("/Assets/images/faces/" + filename.GetString(), TestContext.CancellationToken);
+                Assert.AreEqual(System.Net.HttpStatusCode.OK, image.StatusCode);
+                Assert.AreEqual("image/webp", image.Content.Headers.ContentType?.MediaType);
+                Assert.IsNotEmpty(await image.Content.ReadAsByteArrayAsync(TestContext.CancellationToken));
+            }
+        }
+    }
+
+    [TestMethod]
     public async Task GameAudio_MusicIsServedWithIntroSkippingStartOffset()
     {
         // Prüft die gelieferte MP3 und den Startpunkt 0:15 ohne Wiedergabe des Intros.

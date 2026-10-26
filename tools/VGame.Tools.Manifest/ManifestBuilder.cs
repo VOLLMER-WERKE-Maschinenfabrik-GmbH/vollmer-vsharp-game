@@ -194,6 +194,8 @@ public sealed class ManifestBuilder(IReadOnlyList<AudioPoolManifestEntry>? audio
             foreach (var filename in Directory.GetFiles(fullDirectory, "*", SearchOption.AllDirectories))
             {
                 if (Path.GetExtension(filename) is not (".png" or ".webp" or ".json")) continue;
+                var relativeFile = Path.GetRelativePath(assetsDirectory, filename).Replace('\\', '/');
+                if (Regex.IsMatch(relativeFile, "^images/faces/(catalog\\.json|face_[a-zA-Z0-9_]+\\.webp)$", RegexOptions.CultureInvariant)) continue;
                 var assetId = Path.GetFileNameWithoutExtension(filename);
                 if (!register.ContainsKey(assetId)) throw new ManifestValidationException($"{assetId}: runtime file has no registered ID.");
             }

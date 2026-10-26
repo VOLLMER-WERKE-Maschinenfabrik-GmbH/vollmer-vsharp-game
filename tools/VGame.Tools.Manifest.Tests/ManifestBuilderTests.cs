@@ -8,6 +8,20 @@ namespace VGame.Tools.Manifest.Tests;
 public sealed class ManifestBuilderTests
 {
     [TestMethod]
+    public void Builder_DecorativeFaceOverlaysDoNotConsumeGameplayIds()
+    {
+        // Prüft den ausdrücklich dekorativen Gesichtsordner ohne zusätzliche Werkzeuge oder reservierte Gameplay-IDs.
+        using var fixture = new ManifestFixture();
+        var directory = Path.Combine(fixture.Paths.AssetsDirectory, "images/faces");
+        Directory.CreateDirectory(directory);
+        using var bitmap = CreateToolBitmap();
+        WriteBitmap(bitmap, Path.Combine(directory, "face_dull_bored_01.webp"));
+        File.WriteAllText(Path.Combine(directory, "catalog.json"), """{"version":1,"states":{"dull":["face_dull_bored_01.webp"],"inProgress":[],"sharp":[],"failed":[]}}""");
+        var result = new ManifestBuilder().Run(fixture.Paths, true);
+        Assert.AreEqual(0, result.ExitCode, string.Join("; ", result.Issues.Select(issue => issue.Message)));
+    }
+
+    [TestMethod]
     public void Validation_InMemoryZonesUseSameRulesWithoutWritingFiles()
     {
         // Prüft den Editor-Eingang ohne temporäre oder authored Dateien mit denselben Regeln wie der Manifest-Build.
