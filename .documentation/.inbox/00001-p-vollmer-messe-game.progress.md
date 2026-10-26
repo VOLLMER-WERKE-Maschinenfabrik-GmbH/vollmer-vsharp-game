@@ -2,7 +2,7 @@
 | | |
 |-|-|
 | **Konzept:** | [Vollmer Messe-Game](00001-c-vollmer-messe-game.concept.md) |
-| **Letzte Änderung:** | 2026-10-13 |
+| **Letzte Änderung:** | 2026-10-26 |
 
 Arbeitspakete aus Kap. 5 des Konzepts. Diese Tabelle ist die verbindliche Arbeitsliste für die Umsetzung.
 Status: `⬜ offen` / `🔄 in Arbeit` / `✅ erledigt` / `⛔ blockiert`
@@ -31,6 +31,7 @@ Unverändert aus Kap. 5 des Konzepts; die obere Tabelle hält ausschließlich Be
 
 ## Konzeptstand und Wiedereinstieg
 
+- 2026-10-26: Gelieferte transparente Leonardo-Gesichter eingebunden: 32 verlustfreie WebP-Overlays, davon 12 stumpf, 4 Schleifen, 8 scharf und 8 defekt. Originale bleiben unverändert; proportionale separate Gesichtsobjekte ohne Körperclip ersetzen die gezeichnete Mimik, diese bleibt nur als Ladefehler-Fallback. Stabile Auswahl je Werkzeug-ID/Zustand, alle 32 Texturen/HTTP-Dateien und Zustandszuordnung geprüft; Variantencheck nutzt alle 12 stumpfen Gesichter, Seitenverhältnisse bleiben erhalten. Separate dekorative Gesichtsdateien verbrauchen keine Gameplay-IDs; eng begrenzte Register-Kompatibilität mit 2 MSTests und Gesichtsauslieferung mit 1 HTTP-Test geprüft. Anschließend auf Nutzerwunsch die Sägeschärfzone bis zur schwarzen Kreislinie vergrößert: innerer Schaftradius von etwa 367 auf 336 Bildpixel, Bohrung/innerer Blattkörper bleiben Schaft. Vier vorher rote Richtungsfälle danach grün; gesamter betroffener Artwork-Katalogfilter 10 bestanden, 0 fehlgeschlagen/übersprungen, final ohne Neubau nach aktuellem Testbuild. Laufender Säge-Spielstand bestätigt Radius etwa 0,328 und neues Gesicht, Screenshot geprüft. Werkzeuge unverändert; ein unbeabsichtigt vom Aufbereitungsskript regenerierter Hintergrund wurde per vorigem SHA-256 verifiziert bytegenau wiederhergestellt. Neuer `--tools-only`-Modus hält angepassten Hintergrund bei weiteren Zonenläufen unangetastet; Hash-/Definitionscheck grün. Kein neues Publish, keine Produktions-/Hardwarefreigabe und kein Gesamtabschluss von AP-04. Nächster praktischer Schritt: neue Säge-Schärfzone im Spiel probieren; übrige Hauptkonzept-Abnahmen bleiben offen.
 - 2026-10-13 (13): `bgm.mp3` bytegleich übernommen; Musik beim Rundenstart ab 0:15, Loop 15–138 s, F6 und Stopp an Rollen-/Rundengrenzen geprüft. Nach Nutzer-Hörfeedback Mischung angepasst: Musik -16 dB, Effekte Gain 0,2 (etwa -14 dB), Stimmen unverändert; Ducking -6 dB über 80 ms mit 120 ms Haltezeit/250 ms Rückkehr. Browser bestätigt echten Startoffset 15, 29 dekodierte Dateien, Loop, Ducking, F6 ohne Neustart und Rundengrenze. 3 Audio-HTTP-Fälle und 41 Servertests grün; nach Pegelkorrektur 1 gezielter Musiktest grün mit Build. Client-Build erfolgreich. Vorschau auf 5081 neu gestartet, kein neues Publish. Hör-/Loop-/Latenzfreigabe und vollständige Mischer-/Ausschnittkonfiguration weiterhin offen; Nutzer prüft neue Mischung. Hauptpakete bleiben unverändert offen.
 
 - 2026-10-13 (12): Auf Nutzerwunsch doppelt große Gesichter nicht mehr an Werkzeugalpha oder Schaftpolygon abschneiden. Mimik verwendet `source-over` ohne Körperclip; Schneidenmasken und Trefferzonen bleiben unverändert. Tatsächlichen State-Texture-Zeichenpfad mit instrumentiertem Canvas-Kontext geprüft, TypeScript-/Vite-Build erfolgreich. README angepasst; kein neues Publish und keine Änderung des Gesamtpaketstatus.

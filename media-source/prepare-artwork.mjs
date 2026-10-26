@@ -14,13 +14,15 @@ await mkdir(masterDirectory, { recursive: true });
 await mkdir(path.join(imageDirectory, "tools"), { recursive: true });
 await mkdir(path.join(imageDirectory, "background"), { recursive: true });
 
-const stage = sharp(path.join(sourceDirectory, "bg_0001_v08.jpg"))
-    .resize(2560, 1440, { fit: "cover", position: "centre" });
-await stage.clone().png().toFile(path.join(masterDirectory, "bg_0001.png"));
-await stage.webp({ quality: 92 }).toFile(path.join(imageDirectory, "background/bg_0001.webp"));
-const stageMetadata = await sharp(path.join(imageDirectory, "background/bg_0001.webp")).metadata();
-assert.equal(stageMetadata.width, 2560);
-assert.equal(stageMetadata.height, 1440);
+if (!process.argv.includes("--tools-only")) {
+    const stage = sharp(path.join(sourceDirectory, "bg_0001_v08.jpg"))
+        .resize(2560, 1440, { fit: "cover", position: "centre" });
+    await stage.clone().png().toFile(path.join(masterDirectory, "bg_0001.png"));
+    await stage.webp({ quality: 92 }).toFile(path.join(imageDirectory, "background/bg_0001.webp"));
+    const stageMetadata = await sharp(path.join(imageDirectory, "background/bg_0001.webp")).metadata();
+    assert.equal(stageMetadata.width, 2560);
+    assert.equal(stageMetadata.height, 1440);
+}
 
 const catalog = [];
 for (const asset of [
@@ -98,7 +100,7 @@ for (const asset of [
     };
     let hitZones;
     if (asset.visualKind === "saw") {
-        const bodyRadius = 0.41 * Math.min(resizedMetadata.width / width, resizedMetadata.height / height);
+        const bodyRadius = 0.375 * Math.min(resizedMetadata.width / width, resizedMetadata.height / height);
         const body = Array.from({ length: 64 }, (_, index) => {
             const angle = index * Math.PI / 32;
             return { x: 0.5 + Math.cos(angle) * bodyRadius, y: 0.5 + Math.sin(angle) * bodyRadius };

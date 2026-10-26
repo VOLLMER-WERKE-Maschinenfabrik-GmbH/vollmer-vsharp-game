@@ -318,6 +318,28 @@ public sealed class GameHubIntegrationTests
     }
 
     [TestMethod]
+    [DataRow(0.84, 0.5)]
+    [DataRow(0.16, 0.5)]
+    [DataRow(0.5, 0.16)]
+    [DataRow(0.5, 0.84)]
+    public void ArtworkCatalog_SawCutReachesBlackRingAndKeepsInnerBody(double horizontal, double vertical)
+    {
+        // Prüft die erweiterte Schärffläche bis zur schwarzen Kreislinie und den unveränderten Schaft an Körper und Bohrung.
+        using var factory = CreateFactory();
+        var definition = Assert.ContainsSingle(factory.Services.GetRequiredService<IReadOnlyList<ToolDefinition>>().Where(tool => tool.AssetId == "tool_0010"));
+        var tools = new[] { new ToolSnapshot(definition, ToolState.Dull) };
+        var cuttingContact = VGame.Domain.HitZoneClassifier.FindFirstContact(tools, [new Point2(horizontal, vertical)], 0);
+        Assert.IsNotNull(cuttingContact);
+        Assert.AreEqual(HitZoneRole.Cut, cuttingContact.HitZone.Role);
+        foreach (var point in new[] { new Point2(0.81, 0.5), new Point2(0.5, 0.5) })
+        {
+            var bodyContact = VGame.Domain.HitZoneClassifier.FindFirstContact(tools, [point], 0);
+            Assert.IsNotNull(bodyContact);
+            Assert.AreEqual(HitZoneRole.Shaft, bodyContact.HitZone.Role);
+        }
+    }
+
+    [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
     public async Task JoinGame_WatcherReceivesSnapshotAndCannotStartRound()
     {
