@@ -411,22 +411,6 @@ class WorkshopScene extends Phaser.Scene {
         }
 
         this.drawImageFace(container, tool.definition, visualState, width, height);
-        const face = container.getByName("face-overlay") as Phaser.GameObjects.Image | null;
-        const labelVertical = Math.max(height * 0.5, face?.visible ? face.y + face.displayHeight * 0.5 : 0) + 6;
-        const label = visualState === "dull" ? "STUMPF" : visualState === "inProgress" ? "SCHLIFF" : visualState === "sharp" ? "SCHARF" : "DEFEKT";
-        const stateLabel = container.getByName("state-label") as Phaser.GameObjects.Text | null;
-        if (stateLabel === null) {
-            container.add(this.add.text(0, labelVertical, label, {
-                color: "#202426",
-                backgroundColor: "#ffdda6",
-                padding: { x: 4, y: 2 },
-                fontFamily: "Bahnschrift, sans-serif",
-                fontSize: "11px",
-                fontStyle: "bold"
-            }).setOrigin(0.5).setName("state-label"));
-        } else {
-            stateLabel.setText(label).setPosition(0, labelVertical);
-        }
     }
 
     private drawImageFace(container: Phaser.GameObjects.Container, definition: ToolDefinition, state: ToolState, width: number, height: number): void {
