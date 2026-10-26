@@ -10,6 +10,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VGame.Contracts;
+using VGame.Domain;
 using VGame.Server.Security;
 using VGame.Server.Services;
 using System.Net.Http.Json;
@@ -27,10 +28,50 @@ public sealed class GameHubIntegrationTests
     public TestContext TestContext { get; set; }
 
     [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    [DataRow(2)]
+    [DataRow(3)]
+    public void PrototypeSpawner_CreatesOffscreenFlightInEveryDirection(int direction)
+    {
+        // Prüft vollständig unsichtbaren Ein-/Austritt und sichtbaren Durchflug aus allen vier Richtungen.
+        var placement = PrototypeToolSpawnerService.CreatePlacement(0.16, 0.14, direction);
+        var curve = placement.Curve!;
+        var extents = ToolGeometry.HalfExtents(0.16, 0.14, 0, true);
+        var start = direction < 2 ? curve.Start.X : curve.Start.Y;
+        var end = direction < 2 ? curve.End.X : curve.End.Y;
+        var extent = direction < 2 ? extents.X : extents.Y;
+        if (direction % 2 == 0)
+        {
+            Assert.IsLessThan(0d, start + extent);
+            Assert.IsGreaterThan(1d, end - extent);
+        }
+        else
+        {
+            Assert.IsGreaterThan(1d, start - extent);
+            Assert.IsLessThan(0d, end + extent);
+        }
+        var middle = BezierMotion.Advance(placement, curve.DurationSeconds / 2).Center;
+        Assert.IsInRange(0d, 1d, middle.X);
+        Assert.IsInRange(0d, 1d, middle.Y);
+        Assert.IsInRange(6d, 9d, curve.DurationSeconds);
+        Assert.IsInRange(12d, 30d, Math.Abs(placement.AngularVelocityDegreesPerSecond));
+    }
+
+    [TestMethod]
+    [DataRow(-1)]
+    [DataRow(4)]
+    public void PrototypeSpawner_InvalidFlightDirectionIsRejected(int direction)
+    {
+        // Prüft, dass unbekannte Richtungen nicht still als gültiger Einflug interpretiert werden.
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => PrototypeToolSpawnerService.CreatePlacement(0.16, 0.14, direction));
+    }
+
+    [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
     public async Task PrototypeSpawner_BroadcastsMovingBezierTargets()
     {
-        // Prüft Rundenstart, Spawner und gemeinsame Snapshots mit Kurvenbewegung und zufälliger Drehrichtung/-geschwindigkeit.
+        // Prüft Rundenstart, Außenflug und fortschreitende Bewegung/Rotation in gemeinsamen Snapshots.
         await using var factory = CreateFactory();
         await using var connection = CreateConnection(factory);
         var spawned = new TaskCompletionSource<ToolSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -563,9 +604,9 @@ public sealed class GameHubIntegrationTests
 
     [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
-    public async Task StartRound_SpawnsPrototypeToolsInsideStageArea()
+    public async Task StartRound_SpawnsPrototypeToolsOutsideCanvas()
     {
-        // Prüft, dass der serverseitige Prototyp-Spawner Ziele innerhalb der freien StageArea broadcastet.
+        // Prüft Außenflug-Snapshots, die bestehende Zielzahlgrenze und die vollständig nutzbare Eingabefläche.
         await using var factory = CreateFactory();
         await using var playerConnection = CreateConnection(factory);
         var spawnedTools = new TaskCompletionSource<GameSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -589,18 +630,15 @@ public sealed class GameHubIntegrationTests
         Assert.IsLessThanOrEqualTo(options.MaxConcurrentTargets, snapshot.Tools.Count);
         Assert.IsNotEmpty(snapshot.Tools);
         Assert.IsTrue(snapshot.Tools.All(tool => tool.Definition.ToolId.StartsWith("prototype_", StringComparison.Ordinal)));
-        Assert.IsTrue(snapshot.Tools.All(tool => tool.Placement is not null
-            && tool.Placement.Center.X >= options.StageAreaX + tool.Definition.BoundingWidthNormalized / 2
-            && tool.Placement.Center.X <= options.StageAreaX + options.StageAreaWidth - tool.Definition.BoundingWidthNormalized / 2
-            && tool.Placement.Center.Y >= options.StageAreaY + tool.Definition.BoundingHeightNormalized / 2
-            && tool.Placement.Center.Y <= options.StageAreaY + options.StageAreaHeight - tool.Definition.BoundingHeightNormalized / 2));
-        var firstTool = snapshot.Tools[0];
-        var leftEntryX = options.StageAreaX + firstTool.Definition.BoundingWidthNormalized / 2;
-        var rightEntryX = options.StageAreaX + options.StageAreaWidth - firstTool.Definition.BoundingWidthNormalized / 2;
-        var edgeDistance = Math.Min(
-            Math.Abs(firstTool.Placement!.Center.X - leftEntryX),
-            Math.Abs(firstTool.Placement.Center.X - rightEntryX));
-        Assert.IsLessThanOrEqualTo(0.02, edgeDistance);
+        Assert.AreEqual(new GameStageArea(0, 0, 1, 1), snapshot.StageArea);
+        foreach (var tool in snapshot.Tools)
+        {
+            Assert.IsNotNull(tool.Placement?.Curve);
+            var start = tool.Placement.Curve.Start;
+            var end = tool.Placement.Curve.End;
+            Assert.IsTrue(start.X < 0 || start.X > 1 || start.Y < 0 || start.Y > 1);
+            Assert.IsTrue(end.X < 0 || end.X > 1 || end.Y < 0 || end.Y > 1);
+        }
     }
 
     private static HubConnection CreateConnection(WebApplicationFactory<Program> factory)

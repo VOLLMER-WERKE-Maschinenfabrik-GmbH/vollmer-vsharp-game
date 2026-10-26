@@ -40,11 +40,7 @@ public sealed class PrototypeToolSpawnerService(
             var artwork = candidates.Length > 0 ? candidates[(spawnSequence - 1) % candidates.Length] : null;
             var width = artwork?.BoundingWidthNormalized ?? ToolWidthNormalized;
             var height = artwork?.BoundingHeightNormalized ?? ToolHeightNormalized;
-            var placement = CreatePlacement(snapshot.Tools, spawnSequence, width, height);
-            if (placement is null)
-            {
-                continue;
-            }
+            var placement = CreatePlacement(width, height, Random.Shared.Next(4));
 
             var toolId = $"prototype_{snapshot.RoundId:N}_{spawnSequence:0000}";
             var definition = artwork is not null ? artwork with { ToolId = toolId, ZOrder = spawnSequence } : new ToolDefinition(
@@ -64,64 +60,25 @@ public sealed class PrototypeToolSpawnerService(
         }
     }
 
-    private ToolPlacement? CreatePlacement(IReadOnlyList<ToolSnapshot> activeTools, int spawnSequence, double width, double height)
+    public static ToolPlacement CreatePlacement(double width, double height, int direction)
     {
+        if (direction is < 0 or > 3) throw new ArgumentOutOfRangeException(nameof(direction));
         var halfExtents = ToolGeometry.HalfExtents(width, height, 0, true);
-        var minimumX = options.StageAreaX + halfExtents.X;
-        var maximumX = options.StageAreaX + options.StageAreaWidth - halfExtents.X;
-        var minimumY = options.StageAreaY + halfExtents.Y;
-        var maximumY = options.StageAreaY + options.StageAreaHeight - halfExtents.Y;
-        var stageArea = options.StageAreaWidth * options.StageAreaHeight;
-        var requestedArea = width * height;
-        var usedArea = activeTools.Sum(tool => tool.Definition.BoundingWidthNormalized * tool.Definition.BoundingHeightNormalized);
-
-        if (minimumX >= maximumX || minimumY >= maximumY || (usedArea + requestedArea) / stageArea > options.MaxStageCoverage)
-        {
-            return null;
-        }
-
-        var direction = spawnSequence % 2 == 0 ? 1 : -1;
-        var centerX = direction > 0 ? minimumX : maximumX;
-        for (var attempt = 0; attempt < 32; attempt++)
-        {
-            var center = new Point2(
-                centerX,
-                minimumY + Random.Shared.NextDouble() * (maximumY - minimumY));
-            if (activeTools.Any(tool => IsTooClose(center, tool, width, height)))
-            {
-                continue;
-            }
-
-            var horizontalSpeed = direction * (0.07 + Random.Shared.NextDouble() * 0.05);
-            var horizontalRange = maximumX - minimumX;
-            var verticalRange = maximumY - minimumY;
-            var firstBand = spawnSequence % 3 == 0 ? 0.65 : 0.05;
-            var secondBand = spawnSequence % 3 == 1 ? 0.05 : 0.65;
-            var curve = new CubicBezierPath(center,
-                new Point2(centerX + direction * horizontalRange * 0.3, minimumY + verticalRange * (firstBand + Random.Shared.NextDouble() * 0.3)),
-                new Point2(centerX + direction * horizontalRange * 0.7, minimumY + verticalRange * (secondBand + Random.Shared.NextDouble() * 0.3)),
-                new Point2(direction > 0 ? maximumX : minimumX, minimumY + verticalRange * (0.15 + Random.Shared.NextDouble() * 0.7)),
-                horizontalRange / Math.Abs(horizontalSpeed));
-            var angularSpeed = (Random.Shared.Next(2) == 0 ? -1 : 1) * (12 + Random.Shared.NextDouble() * 18);
-            return new ToolPlacement(center, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: angularSpeed);
-        }
-
-        return null;
-    }
-
-    private bool IsTooClose(Point2 center, ToolSnapshot other, double width, double height)
-    {
-        if (other.Placement is null)
-        {
-            return false;
-        }
-
-        var minimumDistance = options.MinTargetSpacingFactor
-            * Math.Max(Math.Max(width, height), Math.Max(other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized));
-        var distanceX = center.X - other.Placement.Center.X;
-        var distanceY = center.Y - other.Placement.Center.Y;
-        return distanceX * distanceX + distanceY * distanceY < minimumDistance * minimumDistance
-            || ToolGeometry.RotationEnvelopesOverlap(width, height, other.Definition.BoundingWidthNormalized,
-                other.Definition.BoundingHeightNormalized, distanceX, distanceY, options.MinTargetSpacingFactor);
+        var horizontal = direction < 2;
+        var positive = direction % 2 == 0;
+        var margin = (horizontal ? halfExtents.X : halfExtents.Y) + 0.04;
+        var startAlong = positive ? -margin : 1 + margin;
+        var endAlong = positive ? 1 + margin : -margin;
+        var startAcross = 0.15 + Random.Shared.NextDouble() * 0.7;
+        var endAcross = 0.15 + Random.Shared.NextDouble() * 0.7;
+        var bend = (Random.Shared.NextDouble() - 0.5) * 0.16;
+        Point2 Map(double along, double across) => horizontal ? new(along, across) : new(across, along);
+        var start = Map(startAlong, startAcross);
+        var curve = new CubicBezierPath(start,
+            Map(startAlong + (endAlong - startAlong) / 3, startAcross + (endAcross - startAcross) / 3 + bend),
+            Map(startAlong + (endAlong - startAlong) * 2 / 3, startAcross + (endAcross - startAcross) * 2 / 3 - bend),
+            Map(endAlong, endAcross), 6 + Random.Shared.NextDouble() * 3);
+        var angularSpeed = (Random.Shared.Next(2) == 0 ? -1 : 1) * (12 + Random.Shared.NextDouble() * 18);
+        return new ToolPlacement(start, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: angularSpeed);
     }
 }

@@ -13,10 +13,10 @@
   "maxConcurrentTargets": 6,
   "maxStageCoverage": 0.45,
   "minTargetSpacingFactor": 1.25,
-  "stageAreaX": 0.05,
-  "stageAreaY": 0.28,
-  "stageAreaWidth": 0.9,
-  "stageAreaHeight": 0.64,
+  "stageAreaX": 0,
+  "stageAreaY": 0,
+  "stageAreaWidth": 1,
+  "stageAreaHeight": 1,
   "workshopEvents": {
     "enabled": true,
     "events": {

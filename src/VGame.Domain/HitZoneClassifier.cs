@@ -82,6 +82,11 @@ public static class HitZoneClassifier
             return false;
         }
 
+        if (candidate.ToolId != current.ToolId && candidate.ZOrder != current.ZOrder)
+        {
+            return candidate.ZOrder > current.ZOrder;
+        }
+
         if (candidate.HitZone.Role != current.HitZone.Role)
         {
             return candidate.HitZone.Role == HitZoneRole.Shaft;

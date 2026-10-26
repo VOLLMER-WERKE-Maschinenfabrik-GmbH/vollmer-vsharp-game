@@ -9,6 +9,52 @@ namespace VGame.Domain.Tests;
 public sealed class GameEngineTests
 {
     [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    [DataRow(2)]
+    [DataRow(3)]
+    public void FlyThrough_CrossesCanvasFromOutsideAndDespawns(int direction)
+    {
+        // Prüft Einflug von allen vier Seiten, gleichmäßigen Durchflug und Entfernen ohne Punkteabzug.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(time);
+        var start = direction switch { 0 => new Point2(-0.2, 0.6), 1 => new Point2(1.2, 0.6), 2 => new Point2(0.5, -0.3), _ => new Point2(0.5, 1.3) };
+        var end = direction switch { 0 => new Point2(1.2, 0.6), 1 => new Point2(-0.2, 0.6), 2 => new Point2(0.5, 1.3), _ => new Point2(0.5, -0.3) };
+        var curve = new CubicBezierPath(start,
+            new(start.X + (end.X - start.X) / 3, start.Y + (end.Y - start.Y) / 3),
+            new(start.X + (end.X - start.X) * 2 / 3, start.Y + (end.Y - start.Y) * 2 / 3), end, 4);
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("fly-through"), new(start, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: -24)));
+        time.Advance(TimeSpan.FromSeconds(2));
+        var middle = engine.AdvanceClock()!.Tools[0].Placement!;
+        Assert.AreEqual(0.5, middle.Center.X, 1e-9);
+        Assert.AreEqual(direction < 2 ? 0.6 : 0.5, middle.Center.Y, 1e-9);
+        Assert.AreEqual(312d, middle.RotationDegrees, 1e-9);
+        time.Advance(TimeSpan.FromSeconds(1.9));
+        Assert.HasCount(1, engine.AdvanceClock()!.Tools);
+        time.Advance(TimeSpan.FromSeconds(0.1));
+        var finished = engine.AdvanceClock()!;
+        Assert.IsEmpty(finished.Tools);
+        Assert.AreEqual(0, finished.Score);
+    }
+
+    [TestMethod]
+    public void FlyThrough_OverlappingTargetsContinueWithoutReversal()
+    {
+        // Prüft identische Startplätze und echte Überlagerung, ohne Umkehr oder Ausweichen zu erzwingen.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(time);
+        var curve = new CubicBezierPath(new(0.2, 0.6), new(0.4, 0.6), new(0.6, 0.6), new(0.8, 0.6), 4);
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("first"), new(curve.Start, 0, 0, 0, curve)));
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("second"), new(curve.Start, 0, 0, 0, curve)));
+        time.Advance(TimeSpan.FromSeconds(2));
+        var tools = engine.AdvanceClock()!.Tools;
+        Assert.HasCount(2, tools);
+        foreach (var tool in tools) Assert.AreEqual(0.5, tool.Placement!.Center.X, 1e-9);
+        time.Advance(TimeSpan.FromSeconds(1));
+        foreach (var tool in engine.AdvanceClock()!.Tools) Assert.IsGreaterThan(0.5, tool.Placement!.Center.X);
+    }
+
+    [TestMethod]
     [DataRow(24, 350, 14, true)]
     [DataRow(-24, 10, 346, true)]
     [DataRow(24, 350, 14, false)]
@@ -39,31 +85,32 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
-    public void Rotation_RequiresClearanceForEntireTurnAndCurve()
+    public void Rotation_LinearPlacementRequiresClearanceButFlightMayLeaveStage()
     {
-        // Prüft den Freiraum der ganzen Drehung statt ausschließlich der ungedrehten Startbox.
+        // Prüft weiterhin sichere lineare Platzierungen, während Flugkurven den bisherigen Bühnenrand überschreiten dürfen.
         var engine = CreateRunningEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
         var definition = CreateSmallTool("rotation");
         Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(definition,
             new(new(0.13, 0.6), 0, 0, 0, AngularVelocityDegreesPerSecond: 24)));
         var curve = new CubicBezierPath(new(0.25, 0.6), new(0.4, 0.36), new(0.6, 0.6), new(0.75, 0.6), 4);
-        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(definition,
+        Assert.IsTrue(engine.RegisterTool(definition,
             new(curve.Start, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: -24)));
     }
 
     [TestMethod]
-    public void Rotation_BlockedCurveKeepsTurningWithoutReversingSpin()
+    public void Rotation_OverlappingCurveKeepsFlyingAndTurning()
     {
-        // Prüft Drehfortschritt trotz Kurvenblockierung sowie den physischen Mindestabstand der Drehhüllen.
+        // Prüft ungebremsten Flug und unveränderte Drehrichtung bei überlagerten Werkzeugen.
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var engine = CreateRunningEngine(time);
         var curve = new CubicBezierPath(new(0.25, 0.6), new(0.4, 0.6), new(0.6, 0.6), new(0.75, 0.6), 4);
         Assert.IsTrue(engine.RegisterTool(CreateSmallTool("rotation"), new(curve.Start, 0, 0, 0, curve, AngularVelocityDegreesPerSecond: -24)));
         Assert.IsTrue(engine.RegisterTool(CreateSmallTool("blocker"), new(new(0.5, 0.6), 0, 0, 0)));
-        Assert.IsFalse(engine.RegisterTool(CreateSmallTool("vertical-overlap"), new(new(0.64, 0.76), 0, 0, 0, AngularVelocityDegreesPerSecond: 24)));
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("vertical-overlap"), new(new(0.64, 0.76), 0, 0, 0, AngularVelocityDegreesPerSecond: 24)));
         time.Advance(TimeSpan.FromSeconds(2));
         var rotated = engine.AdvanceClock()!.Tools.Single(tool => tool.Definition.ToolId == "rotation").Placement!;
-        Assert.AreEqual(curve.Start, rotated.Center);
+        Assert.AreEqual(0.5, rotated.Center.X, 1e-9);
+        Assert.AreEqual(0.6, rotated.Center.Y, 1e-9);
         Assert.AreEqual(312d, rotated.RotationDegrees, 1e-9);
         Assert.AreEqual(-24d, rotated.AngularVelocityDegreesPerSecond);
     }
@@ -91,9 +138,9 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
-    public void Bezier_MovingCurvesPreserveSpacingAndAuthoritativeHitZones()
+    public void Bezier_CrossingCurvesPreserveAuthoritativeHitZones()
     {
-        // Prüft Abstandssicherheit zweier kreuzender Kurven und Trefferwertung an der tatsächlich bewegten Position.
+        // Prüft echte Kurvenkreuzung und Trefferwertung an der tatsächlich bewegten Position.
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var engine = CreateRunningEngine(time);
         var left = new CubicBezierPath(new(0.2, 0.6), new(0.35, 0.7), new(0.65, 0.5), new(0.8, 0.6), 6);
@@ -101,21 +148,22 @@ public sealed class GameEngineTests
         var definition = CreateSmallTool("curve-left");
         Assert.IsTrue(engine.RegisterTool(definition, new(left.Start, 0, 0, 0, left)));
         Assert.IsTrue(engine.RegisterTool(CreateSmallTool("curve-right"), new(right.Start, 0, 0, 0, right)));
-        for (var step = 0; step < 80; step++)
+        var crossed = false;
+        for (var step = 0; step < 40; step++)
         {
             time.Advance(TimeSpan.FromMilliseconds(100));
             var tools = engine.AdvanceClock()!.Tools;
             var first = tools[0].Placement!.Center;
             var second = tools[1].Placement!.Center;
             var distance = Math.Sqrt(Math.Pow(first.X - second.X, 2) + Math.Pow(first.Y - second.Y, 2));
-            var minimum = new GameplayOptions().MinTargetSpacingFactor * Math.Max(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized);
-            Assert.IsGreaterThanOrEqualTo(minimum - 1e-9, distance);
+            if (distance < 1e-9) crossed = true;
             foreach (var tool in tools)
             {
                 Assert.IsInRange(0.05 + tool.Definition.BoundingWidthNormalized / 2 - 1e-9, 0.95 - tool.Definition.BoundingWidthNormalized / 2 + 1e-9, tool.Placement!.Center.X);
                 Assert.IsInRange(0.28 + tool.Definition.BoundingHeightNormalized / 2 - 1e-9, 0.92 - tool.Definition.BoundingHeightNormalized / 2 + 1e-9, tool.Placement.Center.Y);
             }
         }
+        Assert.IsTrue(crossed);
         var snapshot = engine.GetSnapshot();
         var target = snapshot.Tools[0];
         var point = new Point2(target.Placement!.Center.X + 0.15 * target.Definition.BoundingWidthNormalized, target.Placement.Center.Y);
@@ -124,9 +172,9 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
-    public void Bezier_CurvesAndReturnsSmoothlyInsideStage()
+    public void Bezier_CurvesOnceAndStopsAtExactEndpoint()
     {
-        // Prüft echte Krümmung, exakte Endpunkte und den weichen Hin-/Rücklauf statt gerader Reflexionsbahnen.
+        // Prüft echte Krümmung und exakten Endpunkt ohne Rücklauf sowie das Entfernen abgeschlossener Ziele.
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var engine = CreateRunningEngine(time);
         var curve = new CubicBezierPath(new(0.2, 0.5), new(0.35, 0.85), new(0.65, 0.85), new(0.8, 0.5), 4);
@@ -136,29 +184,38 @@ public sealed class GameEngineTests
         Assert.AreEqual(0.5, middle.Center.X, 1e-9);
         Assert.AreEqual(0.7625, middle.Center.Y, 1e-9);
         time.Advance(TimeSpan.FromSeconds(2));
-        var end = engine.AdvanceClock()!.Tools[0].Placement!;
+        Assert.IsEmpty(engine.AdvanceClock()!.Tools);
+        var end = BezierMotion.Advance(middle, 2);
         Assert.AreEqual(curve.End.X, end.Center.X, 1e-9);
         Assert.AreEqual(curve.End.Y, end.Center.Y, 1e-9);
         Assert.AreEqual(0, end.VelocityXPerSecond, 1e-9);
         time.Advance(TimeSpan.FromSeconds(4));
-        var returned = engine.AdvanceClock()!.Tools[0].Placement!;
-        Assert.AreEqual(curve.Start.X, returned.Center.X, 1e-9);
-        Assert.AreEqual(curve.Start.Y, returned.Center.Y, 1e-9);
+        Assert.IsNull(engine.AdvanceClock());
+        Assert.IsEmpty(engine.GetSnapshot().Tools);
     }
 
     [TestMethod]
     [DataRow(0)]
     [DataRow(1)]
     [DataRow(2)]
+    [DataRow(3)]
+    [DataRow(4)]
+    [DataRow(5)]
+    [DataRow(6)]
+    [DataRow(7)]
     public void Bezier_InvalidControlDurationAndCenterAreRejected(int scenario)
     {
-        // Prüft Kontrollpunkte außerhalb der Bühne, ungültige Dauer und inkonsistenten Startzustand.
+        // Prüft ungültige Kontrollpunkte, Dauer, Flugzeit und inkonsistenten Startzustand trotz erlaubter Außenpositionen.
         var engine = CreateRunningEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
         var curve = new CubicBezierPath(new(0.2, 0.5), new(0.35, 0.75), new(0.65, 0.75), new(0.8, 0.5), 4);
-        if (scenario == 0) curve = curve with { FirstControl = new(0.35, 1) };
+        if (scenario == 0) curve = curve with { FirstControl = new(0.35, 4) };
         if (scenario == 1) curve = curve with { DurationSeconds = 0 };
+        if (scenario == 3) curve = curve with { FirstControl = new(double.NaN, 0.5) };
+        if (scenario == 4) curve = curve with { FirstControl = new(0.5, double.PositiveInfinity) };
+        if (scenario == 7) curve = curve with { Start = null! };
         var center = scenario == 2 ? new Point2(0.5, 0.5) : curve.Start;
-        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(CreateSmallTool("curved"), new(center, 0, 0, 0, curve)));
+        var time = scenario == 5 ? -1 : scenario == 6 ? 5 : 0;
+        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(CreateSmallTool("curved"), new(center, 0, 0, 0, curve, time)));
     }
 
     [TestMethod]
@@ -173,8 +230,14 @@ public sealed class GameEngineTests
         Assert.AreEqual(direct.Center.X, sampled.Center.X, 1e-9);
         Assert.AreEqual(direct.Center.Y, sampled.Center.Y, 1e-9);
         var large = BezierMotion.Advance(placement, 802);
-        Assert.AreEqual(direct.Center.X, large.Center.X, 1e-9);
-        Assert.AreEqual(direct.Center.Y, large.Center.Y, 1e-9);
+        Assert.AreEqual(curve.End.X, large.Center.X, 1e-9);
+        Assert.AreEqual(curve.End.Y, large.Center.Y, 1e-9);
+        Assert.AreEqual(curve.DurationSeconds, large.CurveTimeSeconds);
+        var engineTime = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(engineTime);
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("large-step"), placement));
+        engineTime.Advance(TimeSpan.FromSeconds(5));
+        Assert.IsEmpty(engine.AdvanceClock()!.Tools);
     }
 
     [TestMethod]
@@ -527,7 +590,7 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
-    public void AdvanceClock_ApproachingTools_PreservesMinimumSpacing()
+    public void AdvanceClock_ApproachingTools_AllowOverlap()
     {
         // Prüft, dass sich entgegengesetzt laufende Ziele nicht innerhalb der Mindestdistanz kreuzen.
         var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
@@ -543,7 +606,9 @@ public sealed class GameEngineTests
         var rightCenter = snapshot.Tools.Single(tool => tool.Definition.ToolId == "right").Placement!.Center;
         var distance = Math.Sqrt(Math.Pow(leftCenter.X - rightCenter.X, 2) + Math.Pow(leftCenter.Y - rightCenter.Y, 2));
 
-        Assert.IsGreaterThanOrEqualTo(0.2, distance);
+        Assert.AreEqual(0.02, distance, 1e-9);
+        Assert.AreEqual(0.53, leftCenter.X, 1e-9);
+        Assert.AreEqual(0.55, rightCenter.X, 1e-9);
         Assert.IsInRange(0.13, 0.87, leftCenter.X);
         Assert.IsInRange(0.13, 0.87, rightCenter.X);
     }

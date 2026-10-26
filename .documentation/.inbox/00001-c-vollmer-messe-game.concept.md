@@ -97,7 +97,7 @@ Für die Werkzeugbilder (Bohrer, PKD-Fräser, Sägeblätter) fehlte bis 2026-09-
 
 1. **Standby/Attract:** Der Watcher zeigt eine großformatige Endlosszene; das Handheld zeigt einen eindeutigen Startbereich. Nach Inaktivität startet die Szene erneut.
 2. **Start und Onboarding:** `F2 LASER` oder `F3 SCHEIBE` bestimmt vor dem Start verbindlich den Rundenmodus; genau einer der beiden Modi ist aktiv. `F1 START` reserviert die aktive Rolle und startet die gewaehlte Runde. Die ersten zwei Ziele demonstrieren je nach Modus Tap-Laser oder Swipe-Schleifen mit verlangsamter Bewegung und klarer Geste.
-3. **Hauptphase:** Stumpfe Werkzeuge bewegen sich auf serverseitig berechneten kubischen Bézier-Bahnen innerhalb der freien Zielfläche `stageArea` (Kap. 3.5). Zwei variierende Kontrollpunkte erzeugen Bogen-/S-Verläufe; eine kosinusförmige Zeitsteuerung ermöglicht weiche Umkehr ohne Sprünge. Zusätzlich werden je Werkzeug links/rechts und eine konstante Drehgeschwindigkeit von 12–30°/s zufällig gewählt. Kontrollpunkte und Mindestabstände halten den vollständigen Drehkreis unter Berücksichtigung der 16:9-Spielfläche frei; bei drohender Abstandsunterschreitung wird auf derselben Kurve umgekehrt, während die Drehrichtung erhalten bleibt. Schwierigkeit steigt über Bahnvariation, Spawnrate, Geschwindigkeit, Mischungen und kürzere Reaktionsfenster, nicht über versteckte Regeln. Trefferzonen und verlangte Säge-Swipe-Richtung bleiben an die bestätigte Ausrichtung gebunden, die Mindestlänge ist winkelunabhängig.
+3. **Hauptphase:** Stumpfe Werkzeuge fliegen einmalig über die gesamte Leinwand: zufällig links nach rechts, rechts nach links, oben nach unten oder unten nach oben. Start und Ende liegen unter Berücksichtigung der vollständigen 16:9-Drehhülle außerhalb des sichtbaren Bildes. Variierende kubische Bézier-Bahnen werden serverseitig in 6–9 Sekunden durchlaufen, ohne Rücklauf oder Abstandsblockierung. Danach wird das Werkzeug ohne Punkteabzug entfernt. Überschneidungen sind erlaubt; bei gleichem Kontaktzeitpunkt wird das sichtbare vordere Werkzeug gewertet, innerhalb desselben Werkzeugs bleibt der Schaftvorrang erhalten. Zusätzlich werden je Werkzeug links/rechts und eine konstante Drehgeschwindigkeit von 12–30°/s zufällig gewählt. Schwierigkeit steigt über Bahnvariation, Spawnrate, Geschwindigkeit, Mischungen und kürzere Reaktionsfenster, nicht über versteckte Regeln. Trefferzonen und verlangte Säge-Swipe-Richtung bleiben an die bestätigte Ausrichtung gebunden, die Mindestlänge ist winkelunabhängig.
 4. **Feedback:** Jede abgeschlossene erfolgreiche oder nicht erfolgreiche Spielaktion erhält sichtbares Feedback und eine Audioantwort gemäß Kap. 3.4. Falsches Schärfen und Laser-Treffer auf den Schaft kosten Punkte; die Runde läuft unabhängig vom Punktestand weiter. Es gibt weder Leben noch ein vorzeitiges Game-over. Ein falsch bearbeitetes Werkzeug wechselt sichtbar in den Zustand `failed` (zerstört), ist danach nicht mehr auswertbar und verschwindet beschleunigt (Kap. 3.3.1, [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.5).
 5. **Ende:** Der Server beendet nach standardmäßig $60\text{ s}$ die Wertung, beide Ansichten zeigen Ergebnis und die Rangliste des gespielten Modus. Dauer und Punktewerte sind konfigurierbar. Das Formular erfasst Name und E-Mail für Leads und die Preisbenachrichtigung nach der Messe. Wer keine Kontaktdaten angeben möchte, trägt einen Fantasienamen ohne E-Mail ein und kann seinen Highscore trotzdem speichern. Ohne erreichbare E-Mail-Adresse gibt es keinen Preis; die Teilnahme am Spiel und die Ranglistenanzeige bleiben möglich. `Ohne Eintrag weiter` verwirft das Formular. Der konfigurierbare Datenschutzhinweis erläutert die Zwecke vor dem Speichern (Kap. 3.8).
 6. **Rückkehr:** Nach konfigurierbaren $10$ bis $20\text{ s}$ ohne Eingabe oder nach Abschluss der Namenseingabe wird die Rolle freigegeben und der Attract-Mode geladen.
@@ -434,7 +434,7 @@ no people, no text, no watermark, no logos, no tools in the foreground, empty st
       "file": "images/background/bg_0001.webp",
       "layer": "backdrop",
       "parallaxFactor": 0.0,
-      "stageArea": { "x": 0.05, "y": 0.28, "w": 0.90, "h": 0.64 },
+      "stageArea": { "x": 0, "y": 0, "w": 1, "h": 1 },
       "palette": { "floor": "vollmer_orange_stage_dark", "wall": "grey_light" },
       "lightProfile": "showroom_day",
       "licenseStatus": "royaltyfree"
@@ -457,14 +457,14 @@ no people, no text, no watermark, no logos, no tools in the foreground, empty st
       "maxConcurrentTargets": 6,
       "maxStageCoverage": 0.45,
       "minTargetSpacingFactor": 1.25,
-      "entryEdges": ["left", "right"],
+      "entryEdges": ["left", "right", "top", "bottom"],
       "difficultyRampId": "ramp_default"
     }
   ]
 }
 ```
 
-**Wie die Laufzeit das Beispiel liest:** `bg_0001` liefert die Kulisse, `stageArea` begrenzt den Bereich, in dem Ziele erscheinen dürfen, `spawnProfiles.stage_default` begrenzt gleichzeitige Ziele und deren Flächenanteil (Kap. 3.5). `cast_0001` ist eine rein dekorative Requisite ohne Trefferzone. `tool_0001` verweist über `audioPools` auf die beiden Laserpools; ein neuer Clip wird nur als zusätzliche `variant`-Datei plus Manifestzeile aufgenommen. Die verbindlichen Feldnamen stehen in Kap. 4; ein neues Hintergrund- oder Requisitenasset benötigt einen neuen Eintrag und keine Codeänderung. Das Beispiel dokumentiert den erzeugten Aufbau; in der Praxis entsteht die Datei aus den Autorendateien und der Werkzeugkette ([00003](00003-c-vollmer-manifest-und-hilfstools.concept.md)), nicht durch Eintippen.
+**Wie die Laufzeit das Beispiel liest:** `bg_0001` liefert die Kulisse, `stageArea` beschreibt die nutzbare Eingabefläche und `spawnProfiles.stage_default` die Zielzahl und vier Einflugseiten (Kap. 3.5). Außenflugpositionen dürfen außerhalb `0..1` liegen. Die bestehenden Vertragsfelder `maxStageCoverage` und `minTargetSpacingFactor` bleiben aus Kompatibilitätsgründen vorhanden, blockieren im Durchflugmodus aber weder Spawn noch Überlagerung. Das Produktionsmanifest ist weiterhin nicht im Spiel angebunden; dessen Übernahme bleibt ein offener Schritt aus AP-04. `cast_0001` ist eine rein dekorative Requisite ohne Trefferzone. `tool_0001` verweist über `audioPools` auf die beiden Laserpools; ein neuer Clip wird nur als zusätzliche `variant`-Datei plus Manifestzeile aufgenommen. Die verbindlichen Feldnamen stehen in Kap. 4; ein neues Hintergrund- oder Requisitenasset benötigt einen neuen Eintrag und keine Codeänderung. Das Beispiel dokumentiert den angestrebten Aufbau; die Datei entsteht aus Autorendateien und Werkzeugkette ([00003](00003-c-vollmer-manifest-und-hilfstools.concept.md)).
 
 ## 3.5 Hintergrund, räumliche Tiefe und Humor
 
@@ -480,9 +480,9 @@ no people, no text, no watermark, no logos, no tools in the foreground, empty st
 | Vordergrund | $1{,}10$ bis $1{,}25$ | Schutzscheibe, Kabeltraeger, Transportkorb, Foerdergut und Spänefilter | zeitlich begrenzte, regelbasierte Teilverdeckung |
 | HUD | $0$ | Zeit, Punkte, Combo und Modus | nie von Weltobjekten verdeckt |
 
-**Freie Zielfläche (`stageArea`):** Die Kulisse liefert einen zusammenhängenden, detaillarmen Bereich, in dem Ziele erscheinen dürfen. Startwerte (konfigurierbar): `stageArea` umfasst mindestens $55\,\%$ der Canvasfläche (Beispiel `{ x: 0.05, y: 0.28, w: 0.90, h: 0.64 }`), enthält keine Maschinen-, Möbel- oder Personensilhouette und keine harten Hell-/Dunkelkanten. Ziele treten ausschließlich von den linken und rechten Rändern der `stageArea` ein und bewegen sich in Bahnen quer durch diese Fläche.
+**Spielfläche (`stageArea`):** Für Durchflüge wird die gesamte Leinwand als Eingabefläche freigegeben (`{ x: 0, y: 0, w: 1, h: 1 }`). Die Kulisse bleibt rein dekorativ; Ziele dürfen vor Maschinen und Requisiten über das ganze Bild fliegen. Werkzeuge starten vollständig außerhalb einer zufällig gewählten Seite und verlassen das Bild auf der gegenüberliegenden Seite. Die ehemalige Begrenzung auf den freien Bodenbereich und auf zwei Einflugseiten entfällt. Lesbarkeit und Kontrast werden über die gesamte sichtbare Flugfläche geprüft.
 
-**Regeln gegen Überladung:** Damit auch mehrere gleichzeitige Ziele ruhig und lesbar bleiben, sind die Startwerte `maxConcurrentTargets: 6`, `maxStageCoverage: 0.45` und `minTargetSpacingFactor: 1.25` verbindlich konfiguriert (Manifest-Beispiel in Kap. 3.4.7). Es gelten: höchstens sechs gleichzeitig aktive Ziele; die Summe ihrer Bounding-Boxen belegt höchstens $45\,\%$ der `stageArea`; zwischen zwei Zielen liegt mindestens das $1{,}25$-Fache der längsten Kante der größeren Bounding-Box; die konkrete Bildschirmgröße je `sizeClass` steht im Skalierungsprofil, nicht im Prompt. Neue Werkzeugtypen oder höhere Spawnraten ändern damit die Kulisse nicht.
+**Regeln gegen Überladung:** `maxConcurrentTargets: 6` bleibt verbindlich; auch noch außerhalb befindliche registrierte Ziele zählen dazu. Flüge laufen einmalig in 6–9 Sekunden durch und geben ihren Platz anschließend frei. Werkzeuge dürfen sich überschneiden; Flächenbelegung und Mindestabstand lösen weder Spawnsperre noch Ausweichen oder Umkehr aus. Die bisherigen Felder `maxStageCoverage` und `minTargetSpacingFactor` bleiben nur als kompatible Vertragsfelder erhalten. Die konkrete Bildschirmgröße je `sizeClass` steht im Skalierungsprofil, nicht im Prompt.
 
 **Farbigkeit und Kontrast auf dem Boden:** Der Boden ist orange, aber bewusst **abgesenkt** (Sättigung und Helligkeit unter `orange.600`, Konfigurationswert). Ziele tragen ihre dunkle Kontur und bleiben dadurch lesbar; Cyan (Laser), Grün (Erfolg) und Rot (Fehler) bleiben auf dem Boden eindeutig. Die Kulisse verwendet im Zielbereich keine dieser Feedbackfarben als dominante Flächenfarbe.
 
@@ -655,7 +655,7 @@ Empfohlene Werkzeuge: Phaser als 2D-Laufzeit-Engine, TypeScript für Clientcode,
 | Touch | Tap und Swipe erzeugen lokal sichtbares Feedback in $\leq 50\text{ ms}$ p95 auf dem Zielhandheld. |
 | Framerate | Aktiver Client erreicht $\geq 55\text{ FPS}$ p95, Watcher $\geq 50\text{ FPS}$ p95 unter dem festgelegten Maximalspawnprofil. |
 | Hintergrund und Verdeckung | Die Showroom-Kulisse bleibt fest; Kollegen- und Maschinenrequisiten laufen ausschließlich hinter der Zielebene und verdecken nie ein Ziel. Jedes Ziel ist mindestens $650\text{ ms}$ vor der ersten Verdeckung vollständig sichtbar; keine Verdeckung überschreitet $40\,\%$ Trefferfläche oder $450\text{ ms}$. |
-| Showroom-Bühne und Ziellast | Die Kulisse liefert eine detaillarme `stageArea` von mindestens $55\,\%$ der Canvasfläche und enthält darin keine Maschinen-, Möbel- oder Personensilhouette; bei `maxConcurrentTargets` gleichzeitigen Zielen bleibt die Summe der Werkzeug-Bounding-Boxen unter $45\,\%$ der `stageArea`, der Mindestabstand beträgt das $1{,}25$-Fache der größeren Bounding-Box, und die Silhouette jedes Ziels bleibt gegen den Boden erkennbar. |
+| Showroom-Bühne und Ziellast | Die gesamte Leinwand ist als Eingabefläche freigegeben; vier zufällige Flugrichtungen starten und enden außerhalb des Bildes, auch bei Rotation. Höchstens sechs registrierte Ziele dürfen sich frei überschneiden. Durchflüge enden ohne Rücklauf oder Punkteabzug; gleichzeitig berührte Überlagerungen werden nach sichtbarer Z-Reihenfolge gewertet. Lesbarkeit, Konturen und Feedback werden auch vor Maschinen und bei Überlagerung geprüft. |
 | Retro-Editor-Huelle | Die Showroom-Buehne ist der einzige Ziel- und Gestenbereich; linke Achsen reagieren sichtbar auf Laser und Schleifswipe, ohne selbst Eingabe zu werden. |
 | Design-Tokens und Kontrast | HUD, Bedienhülle und Overlays verwenden die semantische VWC-Zuordnung: Orange für Fokus/Hauptaktion, Cyan für Laser, Grün für Erfolg und Rot für Fehler; `yellow.600` bleibt Shell- und Weltakzent. Der orangefarbene Bühnenboden ist ein abgesenkter Weltwert und macht weder Fokus-/Hauptaktionsorange noch Fehlerrot verwechselbar; Ziele behalten auf dem Boden ihre dunkle Kontur. Touch- und Tastaturfokus bleiben auf anthrazitfarbenem Gehäuse sichtbar; Spielwelt und Effekte bleiben innerhalb der Lesbarkeitsregeln gestalterisch frei. |
 | Funktions- und F-Tastenleiste | `F1` ist ein nicht rastender Starttaster. `F2` bis `F6` sind ausreichend grosse, visuell rastende Schalter; `F2 LASER` und `F3 SCHEIBE` bleiben stets gegenseitig ausschliessend, genau einer ist aktiv. Die grauen Tasten enthalten ausser `F1` bis `F6` keinen weiteren Text. Alle rechten Ereignistasten sind wertungsneutral und respektieren `TON`. |
@@ -773,14 +773,14 @@ Lead-Erzeugung und Preisbenachrichtigung nach der Messe sind festgelegt. Eine re
 
 ## 7.7 R-07: Showroom-Kulisse und Lesbarkeit der Ziele
 ### tl;dr
-- **Favorit:** Die Kulisse liefert eine detaillarme `stageArea`; Ziele sind über Anzahl, Flächenanteil und Mindestabstand begrenzt.
+- **Favorit:** Durchflüge über die gesamte Leinwand zulassen, auf sechs registrierte Ziele begrenzen und Kontrast bei Überlagerung prüfen.
 
 ### Detail
 Ein vollständiges Showroom-Bild ist reizvoll, kann aber Ziele überdecken oder deren Kontrast senken. Weil die Kulisse fest und bildschirmfüllend ist, hängt die Lesbarkeit an der Bildkomposition (freier Bodenbereich) und an der Zieldichte, nicht an einer Kamera.
 
 ### Empfehlung
-- **Favorit:** `stageArea` mit Mindestfläche und Detaillarmut aus Kap. 3.5 im Bild verbindlich freihalten, Kollegen konsequent hinter die Zielebene legen und die Startwerte `maxConcurrentTargets: 6`, `maxStageCoverage: 0.45` sowie `minTargetSpacingFactor: 1.25` verwenden; den Bühnen-/Ziellastcheck in AP-04 und B-02 nachweisen.
-- **Begründung:** Diese drei Größen begrenzen die sichtbare Überladung, ohne die Kulisse zu verflachen oder bei mehr Content Codeänderungen zu erzwingen. Steigt die Zieldichte später, wird sie im Manifestprofil erhöht, nicht durch ein neues Bild.
+- **Favorit:** Die volle Leinwand gemäß Kap. 3.5 verwenden, Kollegen hinter die Zielebene legen und `maxConcurrentTargets: 6` beibehalten; den Bühnen-/Ziellastcheck in AP-04 und B-02 um frei kreuzende Ziele und Trefferpriorität erweitern.
+- **Begründung:** Einmalige Durchflüge verhindern dauerhaft belegte Bahnen; Zielzahlgrenze, dunkle Konturen und sichtbare Trefferpriorität halten die gewünschte Überlagerung spielbar, ohne sie durch Kollisionsabstände wieder zu verhindern.
 
 # 8. Offene Punkte
 
@@ -901,7 +901,7 @@ Leonardo AI liefert Rasterbilder ohne verlässliche Transparenz; deshalb ist der
 ## 8.9 ✅ OP-09: Showroom-Bühnenbild und freie Zielfläche
 ### tl;dr
 - Geklärt: Das Spielbühnenbild ist die feste Showroom-Kulisse `bg_0001` mit orangefarbenem Boden, festen Maschinen und gelegentlich laufenden Kollegen in grauen Vollmer-Polos; die Ziele liegen davor und bleiben dadurch lesbar.
-- Geklärt: Die Kulisse liefert eine detaillarme `stageArea`; `maxConcurrentTargets`, `maxStageCoverage` und `minTargetSpacingFactor` begrenzen die gleichzeitigen Ziele.
+- Geklärt: Die gesamte Leinwand wird für einmalige Durchflüge verwendet; `maxConcurrentTargets` begrenzt die registrierten Ziele, Überschneidungen werden nicht durch Flächen- oder Abstandslimits verhindert.
 
 ### Detail
 Das Showroom-Bild wird mit Leonardo AI nach Kap. 3.4.6 dieses Dokuments erzeugt; Mengen und Ablage stehen in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.3, das konkrete Referenzbild liefert der Auftraggeber nach. Kollegen sind eigenständige `showroom-cast`-Requisiten und werden nicht in die Kulisse eingebrannt, damit sie animierbar und abschaltbar bleiben. Farbigkeit, Kontrast und Abdeckungsregeln stehen in Kap. 3.5; die technische Tiefenstaffelung steht in 00002 Kap. 3.6.

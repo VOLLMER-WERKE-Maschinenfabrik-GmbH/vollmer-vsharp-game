@@ -8,6 +8,20 @@ namespace VGame.Domain.Tests;
 public sealed class HitZoneClassifierTests
 {
     [TestMethod]
+    [DataRow(HitZoneRole.Shaft, HitZoneRole.Cut)]
+    [DataRow(HitZoneRole.Cut, HitZoneRole.Shaft)]
+    public void FindFirstContact_OverlappingTools_PrefersVisibleFrontTool(HitZoneRole rearRole, HitZoneRole frontRole)
+    {
+        // Prüft sichtbaren Werkzeugvorrang bei Überlagerung unabhängig von verdeckten Schaft-/Schneidenzonen.
+        var rear = CreateTool("rear", 1, Rectangle(0.2, 0.2, 0.8, 0.8, "rear-zone", rearRole));
+        var front = CreateTool("front", 2, Rectangle(0.2, 0.2, 0.8, 0.8, "front-zone", frontRole));
+        var contact = HitZoneClassifier.FindFirstContact([new(rear, ToolState.Dull), new(front, ToolState.Dull)], [new Point2(0.5, 0.5)], 0.02);
+        Assert.IsNotNull(contact);
+        Assert.AreEqual("front", contact.ToolId);
+        Assert.AreEqual(frontRole, contact.HitZone.Role);
+    }
+
+    [TestMethod]
     [DataRow(90)]
     [DataRow(-90)]
     [DataRow(45)]

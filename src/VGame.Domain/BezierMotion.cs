@@ -7,10 +7,9 @@ public static class BezierMotion
     public static ToolPlacement Advance(ToolPlacement placement, double elapsedSeconds)
     {
         var curve = placement.Curve ?? throw new ArgumentException("A Bézier path is required.", nameof(placement));
-        var time = (placement.CurveTimeSeconds + elapsedSeconds) % (curve.DurationSeconds * 2);
-        var phase = Math.PI * time / curve.DurationSeconds;
-        var progress = (1 - Math.Cos(phase)) / 2;
-        var progressVelocity = Math.PI * Math.Sin(phase) / (2 * curve.DurationSeconds);
+        var time = Math.Min(placement.CurveTimeSeconds + elapsedSeconds, curve.DurationSeconds);
+        var progress = time / curve.DurationSeconds;
+        var progressVelocity = time < curve.DurationSeconds ? 1 / curve.DurationSeconds : 0;
         var remaining = 1 - progress;
         var center = new Point2(
             remaining * remaining * remaining * curve.Start.X + 3 * remaining * remaining * progress * curve.FirstControl.X

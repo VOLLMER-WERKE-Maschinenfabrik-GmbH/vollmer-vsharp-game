@@ -208,11 +208,6 @@ public sealed class GameEngine
                 return false;
             }
 
-            if (placement is not null && IsPlacementTooClose(definition, placement))
-            {
-                return false;
-            }
-
             _tools.Add(definition.ToolId, new ToolSnapshot(definition, ToolState.Dull, placement));
             _stateVersion++;
             return true;
@@ -538,18 +533,15 @@ public sealed class GameEngine
             if (placement.Curve is not null)
             {
                 var curvedPlacement = BezierMotion.Advance(placement, elapsedSeconds);
-                if (!IsPlacementTooClose(definition, curvedPlacement, definition.ToolId))
+                if (curvedPlacement.CurveTimeSeconds >= placement.Curve.DurationSeconds)
                 {
-                    _tools[definition.ToolId] = tool with { Placement = curvedPlacement };
-                    changed = true;
+                    _tools.Remove(definition.ToolId);
                 }
                 else
                 {
-                    var period = placement.Curve.DurationSeconds * 2;
-                    var reversed = placement with { CurveTimeSeconds = (period - placement.CurveTimeSeconds) % period };
-                    _tools[definition.ToolId] = tool with { Placement = BezierMotion.Advance(reversed, 0) };
-                    changed = true;
+                    _tools[definition.ToolId] = tool with { Placement = curvedPlacement };
                 }
+                changed = true;
                 continue;
             }
             var halfExtents = ToolGeometry.HalfExtents(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
@@ -593,15 +585,6 @@ public sealed class GameEngine
                 VelocityXPerSecond = velocityX,
                 VelocityYPerSecond = velocityY
             };
-            if (IsPlacementTooClose(definition, candidatePlacement, definition.ToolId))
-            {
-                candidatePlacement = placement with
-                {
-                    VelocityXPerSecond = -placement.VelocityXPerSecond,
-                    VelocityYPerSecond = -placement.VelocityYPerSecond
-                };
-            }
-
             _tools[definition.ToolId] = tool with
             {
                 Placement = candidatePlacement
@@ -764,8 +747,7 @@ public sealed class GameEngine
         if (placement.Center is null
             || !double.IsFinite(placement.Center.X)
             || !double.IsFinite(placement.Center.Y)
-            || placement.Center.X is < 0 or > 1
-            || placement.Center.Y is < 0 or > 1
+            || (placement.Curve is null && (placement.Center.X is < 0 or > 1 || placement.Center.Y is < 0 or > 1))
             || !double.IsFinite(placement.VelocityXPerSecond)
             || Math.Abs(placement.VelocityXPerSecond) > 1
             || !double.IsFinite(placement.VelocityYPerSecond)
@@ -777,59 +759,32 @@ public sealed class GameEngine
             throw new ArgumentException("Tool placement contains invalid normalized coordinates or velocities.", nameof(placement));
         }
 
-        var halfExtents = ToolGeometry.HalfExtents(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
-            placement.RotationDegrees, placement.AngularVelocityDegreesPerSecond != 0);
-        var halfWidth = halfExtents.X;
-        var halfHeight = halfExtents.Y;
-        const double boundaryRoundingTolerance = 1e-12;
-        if (placement.Center.X - halfWidth < options.StageAreaX - boundaryRoundingTolerance
-            || placement.Center.X + halfWidth > options.StageAreaX + options.StageAreaWidth + boundaryRoundingTolerance
-            || placement.Center.Y - halfHeight < options.StageAreaY - boundaryRoundingTolerance
-            || placement.Center.Y + halfHeight > options.StageAreaY + options.StageAreaHeight + boundaryRoundingTolerance)
-        {
-            throw new ArgumentException("Tool placement must stay entirely inside the configured stage area.", nameof(placement));
-        }
         if (placement.Curve is { } curve)
         {
             if (!double.IsFinite(curve.DurationSeconds) || curve.DurationSeconds is < 2 or > 60
-                || !double.IsFinite(placement.CurveTimeSeconds) || placement.CurveTimeSeconds < 0)
+                || !double.IsFinite(placement.CurveTimeSeconds) || placement.CurveTimeSeconds < 0 || placement.CurveTimeSeconds > curve.DurationSeconds)
                 throw new ArgumentException("Invalid Bézier duration or progress.", nameof(placement));
             foreach (var point in new[] { curve.Start, curve.FirstControl, curve.SecondControl, curve.End })
             {
                 if (point is null || !double.IsFinite(point.X) || !double.IsFinite(point.Y)
-                    || point.X - halfWidth < options.StageAreaX - boundaryRoundingTolerance
-                    || point.X + halfWidth > options.StageAreaX + options.StageAreaWidth + boundaryRoundingTolerance
-                    || point.Y - halfHeight < options.StageAreaY - boundaryRoundingTolerance
-                    || point.Y + halfHeight > options.StageAreaY + options.StageAreaHeight + boundaryRoundingTolerance)
-                    throw new ArgumentException("Bézier control points must stay inside the tool-safe stage area.", nameof(placement));
+                    || point.X is < -2 or > 3 || point.Y is < -2 or > 3)
+                    throw new ArgumentException("Bézier control points must stay within the extended flight area.", nameof(placement));
             }
             var expected = BezierMotion.Advance(placement, 0).Center;
             if (Math.Abs(expected.X - placement.Center.X) > 1e-9 || Math.Abs(expected.Y - placement.Center.Y) > 1e-9)
                 throw new ArgumentException("Tool center does not match Bézier progress.", nameof(placement));
+            return;
         }
-    }
-
-    private bool IsPlacementTooClose(ToolDefinition definition, ToolPlacement placement, string? ignoredToolId = null)
-    {
-        return _tools.Values.Any(other =>
+        var halfExtents = ToolGeometry.HalfExtents(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
+            placement.RotationDegrees, placement.AngularVelocityDegreesPerSecond != 0);
+        const double boundaryRoundingTolerance = 1e-12;
+        if (placement.Center.X - halfExtents.X < options.StageAreaX - boundaryRoundingTolerance
+            || placement.Center.X + halfExtents.X > options.StageAreaX + options.StageAreaWidth + boundaryRoundingTolerance
+            || placement.Center.Y - halfExtents.Y < options.StageAreaY - boundaryRoundingTolerance
+            || placement.Center.Y + halfExtents.Y > options.StageAreaY + options.StageAreaHeight + boundaryRoundingTolerance)
         {
-            if (other.Placement is null || string.Equals(other.Definition.ToolId, ignoredToolId, StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            var minimumDistance = _options.MinTargetSpacingFactor
-                * Math.Max(
-                    Math.Max(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized),
-                    Math.Max(other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized));
-            var deltaX = placement.Center.X - other.Placement.Center.X;
-            var deltaY = placement.Center.Y - other.Placement.Center.Y;
-            return deltaX * deltaX + deltaY * deltaY < minimumDistance * minimumDistance
-                || ((placement.AngularVelocityDegreesPerSecond != 0 || other.Placement.AngularVelocityDegreesPerSecond != 0)
-                    && ToolGeometry.RotationEnvelopesOverlap(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized,
-                        other.Definition.BoundingWidthNormalized, other.Definition.BoundingHeightNormalized,
-                        deltaX, deltaY, _options.MinTargetSpacingFactor));
-        });
+            throw new ArgumentException("Tool placement must stay entirely inside the configured stage area.", nameof(placement));
+        }
     }
 
     private void AssignActiveRole(string clientId, ClientSession session)
