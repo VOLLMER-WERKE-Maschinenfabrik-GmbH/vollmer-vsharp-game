@@ -8,6 +8,8 @@ Das Repository enthält den lokalen ASP.NET-Core-Host, die Blazor-Betriebshülle
 
 ## Spielstand zu 00001/AP-04
 
+Werkzeuge bewegen sich auf variierenden kubischen Bézier-Bahnen statt auf geraden Reflexionsstrecken. Die Kurven werden ausschließlich im Server ausgewertet; Spieler und Watcher erhalten dieselben Positionen. Kontrollpunkte bleiben innerhalb der um Werkzeugmaße verkleinerten Bühne, Endpunkte werden weich durchlaufen beziehungsweise mit Richtungsumkehr erreicht. Bei drohendem Abstandskonflikt wird auf derselben Kurve umgekehrt, ohne Ziele zu teleportieren. Bestehende lineare Platzierungen bleiben als kompatibler Fallback möglich; Trefferzonen, Werkzeugausrichtung und Audio sind unverändert.
+
 Seit 2026-10-26 werden die gelieferten Leonardo-Gesichter als 32 transparente Bild-Overlays verwendet: 12 stumpfe, 4 Schleif-, 8 scharfe und 8 defekte Varianten. `node media-source/prepare-faces.mjs` erzeugt aus den unveränderten PNGs unter `media-source/leonardo/faces/` proportionale verlustfreie WebP-Dateien mit transparentem Rand und Zustandskatalog unter `Assets/images/faces/`. Die Auswahl bleibt je Werkzeug-ID und Zustand stabil; separate Gesichtsobjekte verhindern Abschneiden an der Werkzeugkontur. Gezeichnete Gesichter werden nur noch bei fehlenden Bildvarianten verwendet.
 
 Beim Sägeblatt reicht die Schärfzone nach innen bis zur schwarzen Kreislinie; nur der Bereich innerhalb dieses Kreises einschließlich Bohrung bleibt Schaft. `node media-source/prepare-artwork.mjs --tools-only` aktualisiert die Werkzeugbilder/-konturen ohne den inzwischen angepassten Hintergrund neu zu erzeugen. Für diese Zonenanpassung bleiben alle Runtime-Bildbytes sowie Bohrer-/Fräserdefinitionen unverändert.

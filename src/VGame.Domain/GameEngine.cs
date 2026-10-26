@@ -530,6 +530,23 @@ public sealed class GameEngine
 
             var definition = tool.Definition;
             var placement = tool.Placement;
+            if (placement.Curve is not null)
+            {
+                var curvedPlacement = BezierMotion.Advance(placement, elapsedSeconds);
+                if (!IsPlacementTooClose(definition, curvedPlacement, definition.ToolId))
+                {
+                    _tools[definition.ToolId] = tool with { Placement = curvedPlacement };
+                    changed = true;
+                }
+                else
+                {
+                    var period = placement.Curve.DurationSeconds * 2;
+                    var reversed = placement with { CurveTimeSeconds = (period - placement.CurveTimeSeconds) % period };
+                    _tools[definition.ToolId] = tool with { Placement = BezierMotion.Advance(reversed, 0) };
+                    changed = true;
+                }
+                continue;
+            }
             var minimumX = _options.StageAreaX + definition.BoundingWidthNormalized / 2;
             var maximumX = _options.StageAreaX + _options.StageAreaWidth - definition.BoundingWidthNormalized / 2;
             var minimumY = _options.StageAreaY + definition.BoundingHeightNormalized / 2;
@@ -758,6 +775,24 @@ public sealed class GameEngine
             || placement.Center.Y + halfHeight > options.StageAreaY + options.StageAreaHeight + boundaryRoundingTolerance)
         {
             throw new ArgumentException("Tool placement must stay entirely inside the configured stage area.", nameof(placement));
+        }
+        if (placement.Curve is { } curve)
+        {
+            if (!double.IsFinite(curve.DurationSeconds) || curve.DurationSeconds is < 2 or > 60
+                || !double.IsFinite(placement.CurveTimeSeconds) || placement.CurveTimeSeconds < 0)
+                throw new ArgumentException("Invalid Bézier duration or progress.", nameof(placement));
+            foreach (var point in new[] { curve.Start, curve.FirstControl, curve.SecondControl, curve.End })
+            {
+                if (point is null || !double.IsFinite(point.X) || !double.IsFinite(point.Y)
+                    || point.X - halfWidth < options.StageAreaX - boundaryRoundingTolerance
+                    || point.X + halfWidth > options.StageAreaX + options.StageAreaWidth + boundaryRoundingTolerance
+                    || point.Y - halfHeight < options.StageAreaY - boundaryRoundingTolerance
+                    || point.Y + halfHeight > options.StageAreaY + options.StageAreaHeight + boundaryRoundingTolerance)
+                    throw new ArgumentException("Bézier control points must stay inside the tool-safe stage area.", nameof(placement));
+            }
+            var expected = BezierMotion.Advance(placement, 0).Center;
+            if (Math.Abs(expected.X - placement.Center.X) > 1e-9 || Math.Abs(expected.Y - placement.Center.Y) > 1e-9)
+                throw new ArgumentException("Tool center does not match Bézier progress.", nameof(placement));
         }
     }
 

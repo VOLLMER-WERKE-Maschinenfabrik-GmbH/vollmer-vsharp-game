@@ -9,6 +9,93 @@ namespace VGame.Domain.Tests;
 public sealed class GameEngineTests
 {
     [TestMethod]
+    public void Bezier_MovingCurvesPreserveSpacingAndAuthoritativeHitZones()
+    {
+        // Prüft Abstandssicherheit zweier kreuzender Kurven und Trefferwertung an der tatsächlich bewegten Position.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(time);
+        var left = new CubicBezierPath(new(0.2, 0.6), new(0.35, 0.7), new(0.65, 0.5), new(0.8, 0.6), 6);
+        var right = new CubicBezierPath(new(0.8, 0.6), new(0.65, 0.7), new(0.35, 0.5), new(0.2, 0.6), 6);
+        var definition = CreateSmallTool("curve-left");
+        Assert.IsTrue(engine.RegisterTool(definition, new(left.Start, 0, 0, 0, left)));
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("curve-right"), new(right.Start, 0, 0, 0, right)));
+        for (var step = 0; step < 80; step++)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            var tools = engine.AdvanceClock()!.Tools;
+            var first = tools[0].Placement!.Center;
+            var second = tools[1].Placement!.Center;
+            var distance = Math.Sqrt(Math.Pow(first.X - second.X, 2) + Math.Pow(first.Y - second.Y, 2));
+            var minimum = new GameplayOptions().MinTargetSpacingFactor * Math.Max(definition.BoundingWidthNormalized, definition.BoundingHeightNormalized);
+            Assert.IsGreaterThanOrEqualTo(minimum - 1e-9, distance);
+            foreach (var tool in tools)
+            {
+                Assert.IsInRange(0.05 + tool.Definition.BoundingWidthNormalized / 2 - 1e-9, 0.95 - tool.Definition.BoundingWidthNormalized / 2 + 1e-9, tool.Placement!.Center.X);
+                Assert.IsInRange(0.28 + tool.Definition.BoundingHeightNormalized / 2 - 1e-9, 0.92 - tool.Definition.BoundingHeightNormalized / 2 + 1e-9, tool.Placement.Center.Y);
+            }
+        }
+        var snapshot = engine.GetSnapshot();
+        var target = snapshot.Tools[0];
+        var point = new Point2(target.Placement!.Center.X + 0.15 * target.Definition.BoundingWidthNormalized, target.Placement.Center.Y);
+        var result = engine.ResolveAction(CreateTapRequest("player", snapshot.RoundId!.Value, 1, point, time.GetUtcNow()));
+        Assert.AreEqual(Outcome.Success, result.Resolution!.Outcome);
+    }
+
+    [TestMethod]
+    public void Bezier_CurvesAndReturnsSmoothlyInsideStage()
+    {
+        // Prüft echte Krümmung, exakte Endpunkte und den weichen Hin-/Rücklauf statt gerader Reflexionsbahnen.
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(time);
+        var curve = new CubicBezierPath(new(0.2, 0.5), new(0.35, 0.85), new(0.65, 0.85), new(0.8, 0.5), 4);
+        Assert.IsTrue(engine.RegisterTool(CreateSmallTool("curved"), new(curve.Start, 0, 0, 0, curve)));
+        time.Advance(TimeSpan.FromSeconds(2));
+        var middle = engine.AdvanceClock()!.Tools[0].Placement!;
+        Assert.AreEqual(0.5, middle.Center.X, 1e-9);
+        Assert.AreEqual(0.7625, middle.Center.Y, 1e-9);
+        time.Advance(TimeSpan.FromSeconds(2));
+        var end = engine.AdvanceClock()!.Tools[0].Placement!;
+        Assert.AreEqual(curve.End.X, end.Center.X, 1e-9);
+        Assert.AreEqual(curve.End.Y, end.Center.Y, 1e-9);
+        Assert.AreEqual(0, end.VelocityXPerSecond, 1e-9);
+        time.Advance(TimeSpan.FromSeconds(4));
+        var returned = engine.AdvanceClock()!.Tools[0].Placement!;
+        Assert.AreEqual(curve.Start.X, returned.Center.X, 1e-9);
+        Assert.AreEqual(curve.Start.Y, returned.Center.Y, 1e-9);
+    }
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    [DataRow(2)]
+    public void Bezier_InvalidControlDurationAndCenterAreRejected(int scenario)
+    {
+        // Prüft Kontrollpunkte außerhalb der Bühne, ungültige Dauer und inkonsistenten Startzustand.
+        var engine = CreateRunningEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+        var curve = new CubicBezierPath(new(0.2, 0.5), new(0.35, 0.75), new(0.65, 0.75), new(0.8, 0.5), 4);
+        if (scenario == 0) curve = curve with { FirstControl = new(0.35, 1) };
+        if (scenario == 1) curve = curve with { DurationSeconds = 0 };
+        var center = scenario == 2 ? new Point2(0.5, 0.5) : curve.Start;
+        Assert.ThrowsExactly<ArgumentException>(() => engine.RegisterTool(CreateSmallTool("curved"), new(center, 0, 0, 0, curve)));
+    }
+
+    [TestMethod]
+    public void Bezier_SamplingAndLargeTimeStepsRemainDeterministic()
+    {
+        // Prüft taktratenunabhängige Kurvenpositionen und sichere große Zeitabstände.
+        var curve = new CubicBezierPath(new(0.2, 0.5), new(0.35, 0.85), new(0.65, 0.85), new(0.8, 0.5), 4);
+        var placement = new ToolPlacement(curve.Start, 0, 0, 0, curve);
+        var sampled = placement;
+        for (var index = 0; index < 200; index++) sampled = BezierMotion.Advance(sampled, 0.01);
+        var direct = BezierMotion.Advance(placement, 2);
+        Assert.AreEqual(direct.Center.X, sampled.Center.X, 1e-9);
+        Assert.AreEqual(direct.Center.Y, sampled.Center.Y, 1e-9);
+        var large = BezierMotion.Advance(placement, 802);
+        Assert.AreEqual(direct.Center.X, large.Center.X, 1e-9);
+        Assert.AreEqual(direct.Center.Y, large.Center.Y, 1e-9);
+    }
+
+    [TestMethod]
     public void GetSnapshot_ContainsConfiguredAuthoritativeStageArea()
     {
         // Prüft gemeinsame Eingabe- und Spawn-Grenzen statt einer abweichenden hartcodierten Clientfläche.

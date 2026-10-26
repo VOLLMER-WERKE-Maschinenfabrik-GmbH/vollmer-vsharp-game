@@ -92,8 +92,16 @@ public sealed class PrototypeToolSpawnerService(
             }
 
             var horizontalSpeed = direction * (0.07 + Random.Shared.NextDouble() * 0.05);
-            var verticalSpeed = (Random.Shared.NextDouble() - 0.5) * 0.06;
-            return new ToolPlacement(center, horizontalSpeed, verticalSpeed, 0);
+            var horizontalRange = maximumX - minimumX;
+            var verticalRange = maximumY - minimumY;
+            var firstBand = spawnSequence % 3 == 0 ? 0.65 : 0.05;
+            var secondBand = spawnSequence % 3 == 1 ? 0.05 : 0.65;
+            var curve = new CubicBezierPath(center,
+                new Point2(centerX + direction * horizontalRange * 0.3, minimumY + verticalRange * (firstBand + Random.Shared.NextDouble() * 0.3)),
+                new Point2(centerX + direction * horizontalRange * 0.7, minimumY + verticalRange * (secondBand + Random.Shared.NextDouble() * 0.3)),
+                new Point2(direction > 0 ? maximumX : minimumX, minimumY + verticalRange * (0.15 + Random.Shared.NextDouble() * 0.7)),
+                horizontalRange / Math.Abs(horizontalSpeed));
+            return new ToolPlacement(center, 0, 0, 0, curve);
         }
 
         return null;

@@ -27,6 +27,34 @@ public sealed class GameHubIntegrationTests
     public TestContext TestContext { get; set; }
 
     [TestMethod]
+    [Timeout(15000, CooperativeCancellation = true)]
+    public async Task PrototypeSpawner_BroadcastsMovingBezierTargets()
+    {
+        // Prüft die tatsächliche Verdrahtung von Rundenstart, Spawner, Kurvenbewegung und gemeinsamen Snapshots.
+        await using var factory = CreateFactory();
+        await using var connection = CreateConnection(factory);
+        var spawned = new TaskCompletionSource<ToolSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var moved = new TaskCompletionSource<ToolSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        ToolSnapshot? initial = null;
+        connection.On<GameSnapshot>("SnapshotUpdated", snapshot =>
+        {
+            var tool = snapshot.Tools.FirstOrDefault(target => target.Placement?.Curve is not null);
+            if (tool is null) return;
+            if (initial is null) { initial = tool; spawned.TrySetResult(tool); }
+            else if (tool.Definition.ToolId == initial.Definition.ToolId && tool.Placement!.Center != initial.Placement!.Center) moved.TrySetResult(tool);
+        });
+        await connection.StartAsync(TestContext.CancellationToken);
+        await connection.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("curves-player", ClientRole.Player), TestContext.CancellationToken);
+        Assert.IsTrue(await connection.InvokeAsync<bool>("StartRound", TestContext.CancellationToken));
+        var first = await spawned.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        var later = await moved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.IsNotNull(first.Placement!.Curve);
+        Assert.IsGreaterThan(0d, later.Placement!.CurveTimeSeconds);
+        Assert.AreNotEqual(first.Placement.Center, later.Placement.Center);
+        Assert.AreEqual(first.Placement.Curve, later.Placement.Curve);
+    }
+
+    [TestMethod]
     public async Task FaceImages_AllStateVariantsAreServedFromCanonicalAssets()
     {
         // Prüft die tatsächliche Auslieferung aller gelieferten Zustandsvarianten aus dem zentralen Laufzeitpfad.
