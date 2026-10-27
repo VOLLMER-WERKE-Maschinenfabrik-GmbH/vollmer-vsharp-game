@@ -133,6 +133,7 @@ class WorkshopScene extends Phaser.Scene {
         this.createBackdrop();
         this.createInterface();
         this.attractScreen = new AttractScreen(this.game.canvas.parentElement!.parentElement!);
+        this.attractScreen.setActive(true);
         this.gestureTrail = this.add.graphics().setDepth(75);
         this.registerInput();
         if (this.requestedRole === "player") this.audio = new GameAudio(message => this.shell.setAudioStatus(message));
@@ -325,7 +326,7 @@ class WorkshopScene extends Phaser.Scene {
         } else {
             this.titleText.setVisible(false);
         }
-        this.attractScreen?.setPlaying(snapshot.phase === "playing");
+        this.attractScreen?.setActive(snapshot.phase === "attract");
 
         const canSelectMode = this.role === "player" && snapshot.phase !== "playing";
         const canRequestRole = this.requestedRole === "player" && this.role === "watcher" && snapshot.phase !== "playing";
