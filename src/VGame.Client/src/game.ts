@@ -726,7 +726,7 @@ export function createGame(role: ClientRole): Phaser.Game {
         transparent: true,
         audio: { noAudio: true },
         scale: {
-            mode: Phaser.Scale.FIT,
+            mode: Phaser.Scale.ENVELOP,
             autoCenter: Phaser.Scale.CENTER_BOTH
         },
         scene: [new WorkshopScene(role, shell)]
