@@ -6,8 +6,8 @@
     "visualKind": "drill",
     "hasPkd": false,
     "cutDirectionDegrees": 0,
-    "boundingWidthNormalized": 0.2,
-    "boundingHeightNormalized": 0.08333333333333334,
+    "boundingWidthNormalized": 0.23,
+    "boundingHeightNormalized": 0.09583333333333335,
     "hitZones": [
       {
         "zoneId": "shaft",

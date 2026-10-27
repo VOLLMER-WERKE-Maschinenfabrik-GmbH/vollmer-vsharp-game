@@ -126,6 +126,7 @@ for (const asset of [
     }
     await writeFile(path.join(masterDirectory, `${asset.assetId}.png`), master);
     await sharp(master).webp({ lossless: true }).toFile(path.join(imageDirectory, `tools/${asset.assetId}.webp`));
+    const boundingWidthNormalized = asset.visualKind === "saw" ? 0.12 : asset.visualKind === "drill" ? 0.23 : 0.20;
     catalog.push({
         toolId: asset.assetId,
         assetId: asset.assetId,
@@ -133,8 +134,8 @@ for (const asset of [
         visualKind: asset.visualKind,
         hasPkd: false,
         cutDirectionDegrees: 0,
-        boundingWidthNormalized: asset.visualKind === "saw" ? 0.12 : 0.20,
-        boundingHeightNormalized: (asset.visualKind === "saw" ? 0.12 : 0.20) * 16 / 9 * height / width,
+        boundingWidthNormalized,
+        boundingHeightNormalized: boundingWidthNormalized * 16 / 9 * height / width,
         hitZones
     });
     console.log(`${asset.assetId}: ${width}x${height}, transparent master and lossless WebP prepared`);

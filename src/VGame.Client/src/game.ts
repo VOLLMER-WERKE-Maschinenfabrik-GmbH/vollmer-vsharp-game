@@ -450,7 +450,7 @@ class WorkshopScene extends Phaser.Scene {
         }
         face.setTexture(key).setVisible(true);
         const image = this.textures.get(key).getSourceImage() as HTMLImageElement;
-        const displayWidth = width * (definition.visualKind === "saw" ? 0.52 : 0.42);
+        const displayWidth = width * (definition.visualKind === "saw" ? 0.42 : 0.32);
         const displayHeight = displayWidth * image.height / image.width;
         face.setDisplaySize(displayWidth, displayHeight)
             .setPosition(definition.visualKind === "saw" ? 0 : -width * 0.11, definition.visualKind === "saw" ? -height * 0.17 : 0);
