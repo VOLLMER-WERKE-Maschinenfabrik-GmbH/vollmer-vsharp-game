@@ -42,7 +42,7 @@ export class MachineShell {
         this.root.innerHTML = `
             <section class="machine-screen">
                 <aside class="machine-status" aria-label="Maschinenstatus">
-                    <div class="machine-brand">VOLLMER</div>
+                    <div class="machine-brand"><img src="/Assets/images/ui/vollmer-logo.png" alt="VOLLMER"></div>
                     <dl class="readouts">
                         <dt>PROGRAMM</dt><dd class="program-value">GAME01</dd>
                         <dt>PUNKTE</dt><dd data-readout="score">00000</dd>
