@@ -432,6 +432,52 @@ public sealed class GameHubIntegrationTests
 
     [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
+    public async Task AbortRound_ActivePlayerBroadcastsResultsAndCanRestart()
+    {
+        // Prüft den echten SignalR-Abbruch einschließlich Zuschauer-/Beitrittsschutz, Broadcast und sofortigem Neustart.
+        await using var factory = CreateFactory();
+        await using var player = CreateConnection(factory);
+        await using var watcher = CreateConnection(factory);
+        await player.StartAsync(TestContext.CancellationToken);
+        await watcher.StartAsync(TestContext.CancellationToken);
+        Assert.IsFalse(await watcher.InvokeAsync<bool>("AbortRound", Guid.NewGuid(), TestContext.CancellationToken));
+        await player.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("abort-player", ClientRole.Player), TestContext.CancellationToken);
+        await watcher.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("abort-watcher", ClientRole.Watcher), TestContext.CancellationToken);
+        Assert.IsTrue(await player.InvokeAsync<bool>("StartRound", TestContext.CancellationToken));
+        var running = await player.InvokeAsync<GameSnapshot>("GetSnapshot", TestContext.CancellationToken);
+        var roundId = running.RoundId!.Value;
+        Assert.IsFalse(await watcher.InvokeAsync<bool>("AbortRound", roundId, TestContext.CancellationToken));
+        Assert.IsFalse(await player.InvokeAsync<bool>("AbortRound", Guid.NewGuid(), TestContext.CancellationToken));
+        var playerResult = new TaskCompletionSource<GameSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var watcherResult = new TaskCompletionSource<GameSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        player.On<GameSnapshot>("SnapshotUpdated", snapshot =>
+        {
+            if (snapshot.RoundId == roundId && snapshot.Phase == GamePhase.Results) playerResult.TrySetResult(snapshot);
+        });
+        watcher.On<GameSnapshot>("SnapshotUpdated", snapshot =>
+        {
+            if (snapshot.RoundId == roundId && snapshot.Phase == GamePhase.Results) watcherResult.TrySetResult(snapshot);
+        });
+
+        Assert.IsTrue(await player.InvokeAsync<bool>("AbortRound", roundId, TestContext.CancellationToken));
+
+        var result = await playerResult.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        var watchedResult = await watcherResult.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreEqual(0, result.RemainingMs);
+        Assert.AreEqual("abort-player", result.ActiveClientId);
+        Assert.AreEqual(result.RoundId, watchedResult.RoundId);
+        Assert.AreEqual(result.StateVersion, watchedResult.StateVersion);
+        Assert.IsEmpty(result.Tools);
+        Assert.IsFalse(await player.InvokeAsync<bool>("AbortRound", roundId, TestContext.CancellationToken));
+        Assert.IsTrue(await player.InvokeAsync<bool>("StartRound", TestContext.CancellationToken));
+        Assert.IsFalse(await player.InvokeAsync<bool>("AbortRound", roundId, TestContext.CancellationToken));
+        var restarted = await player.InvokeAsync<GameSnapshot>("GetSnapshot", TestContext.CancellationToken);
+        Assert.AreEqual(GamePhase.Playing, restarted.Phase);
+        Assert.AreNotEqual(roundId, restarted.RoundId);
+    }
+
+    [TestMethod]
+    [Timeout(15000, CooperativeCancellation = true)]
     public async Task JoinGame_WatcherReceivesSnapshotAndCannotStartRound()
     {
         // Prüft einen echten SignalR-Beitritt, den Snapshot-Broadcast und die passive Watcherrolle.

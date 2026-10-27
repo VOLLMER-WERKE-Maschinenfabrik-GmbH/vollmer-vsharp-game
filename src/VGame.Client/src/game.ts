@@ -585,17 +585,21 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     private async startRound(): Promise<void> {
-        if (this.requestedRole !== "player" || this.snapshot?.phase === "playing" || this.startingRound) {
+        if (this.requestedRole !== "player" || this.startingRound) {
             return;
         }
 
         if (this.role !== "player") {
-            await this.invokeHub<boolean>("RequestPlayerRole");
+            if (this.snapshot?.phase !== "playing") await this.invokeHub<boolean>("RequestPlayerRole");
             return;
         }
 
         this.startingRound = true;
         try {
+            if (this.snapshot?.phase === "playing") {
+                if (this.snapshot.roundId) await this.invokeHub<boolean>("AbortRound", this.snapshot.roundId);
+                return;
+            }
             await this.audio?.unlock();
             if (this.canBeginRound()) await this.invokeHub<boolean>("StartRound");
         } finally { this.startingRound = false; }

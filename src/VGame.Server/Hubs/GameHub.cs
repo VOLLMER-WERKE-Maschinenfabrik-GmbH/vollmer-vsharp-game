@@ -56,6 +56,18 @@ public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOri
         return true;
     }
 
+    public async Task<bool> AbortRound(Guid roundId)
+    {
+        var clientId = GetJoinedClientId();
+        if (clientId is null || !gameEngine.AbortRound(clientId, roundId))
+        {
+            return false;
+        }
+
+        await Clients.All.SnapshotUpdated(gameEngine.GetSnapshot());
+        return true;
+    }
+
     public async Task<bool> RequestPlayerRole()
     {
         var clientId = GetJoinedClientId();

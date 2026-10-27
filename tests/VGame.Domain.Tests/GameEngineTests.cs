@@ -675,6 +675,73 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
+    public void AbortRound_ActivePlayer_EndsRoundAndPreservesScoreAndRole()
+    {
+        // Prüft den Besucherabbruch mit erhaltenem Punktestand und Spielerrolle sowie sofortigem Neustart.
+        var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var engine = CreateRunningEngine(timeProvider);
+        Assert.IsTrue(engine.RegisterTool(CreateTool("abort-tool")));
+        var before = engine.GetSnapshot();
+        var request = CreateTapRequest("player", before.RoundId!.Value, 1, new Point2(0.65, 0.5), timeProvider.GetUtcNow());
+        Assert.IsTrue(engine.ResolveAction(request).Accepted);
+        var scored = engine.GetSnapshot();
+        Assert.IsGreaterThan(0, scored.Score);
+
+        Assert.IsTrue(engine.AbortRound("player", before.RoundId.Value));
+
+        var aborted = engine.GetSnapshot();
+        Assert.AreEqual(GamePhase.Results, aborted.Phase);
+        Assert.AreEqual(0, aborted.RemainingMs);
+        Assert.AreEqual(scored.Score, aborted.Score);
+        Assert.AreEqual(scored.RoundId, aborted.RoundId);
+        Assert.AreEqual(scored.RoleVersion, aborted.RoleVersion);
+        Assert.AreEqual("player", aborted.ActiveClientId);
+        Assert.AreEqual(ClientRole.Player, engine.GetClientRole("player"));
+        Assert.IsEmpty(aborted.Tools);
+        Assert.IsFalse(engine.ResolveAction(CreateTapRequest("player", before.RoundId.Value, 2,
+            new Point2(0.65, 0.5), timeProvider.GetUtcNow())).Accepted);
+        Assert.IsNull(engine.AdvanceClock());
+        Assert.IsTrue(engine.StartRound("player"));
+        Assert.AreNotEqual(before.RoundId, engine.GetSnapshot().RoundId);
+        Assert.AreEqual(0, engine.GetSnapshot().Score);
+    }
+
+    [TestMethod]
+    [DataRow("watcher")]
+    [DataRow("unknown")]
+    public void AbortRound_NonActiveClientCannotEndRound(string clientInstanceId)
+    {
+        // Prüft, dass Zuschauer und unbekannte Clients keine laufende Besucherrunde abbrechen können.
+        var engine = CreateRunningEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+        engine.JoinClient(new JoinRequest("watcher", ClientRole.Watcher), true);
+        var before = engine.GetSnapshot();
+
+        Assert.IsFalse(engine.AbortRound(clientInstanceId, before.RoundId!.Value));
+
+        Assert.AreEqual(GamePhase.Playing, engine.GetSnapshot().Phase);
+        Assert.AreEqual(before.StateVersion, engine.GetSnapshot().StateVersion);
+    }
+
+    [TestMethod]
+    public void AbortRound_NotPlayingOrStaleRound_IsRejected()
+    {
+        // Prüft ungültige und wiederholte Abbrüche sowie den Schutz einer neuen Runde vor verspäteten Befehlen.
+        var engine = CreateEngine(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+        JoinPlayer(engine);
+        Assert.IsFalse(engine.AbortRound("player", Guid.NewGuid()));
+        Assert.IsTrue(engine.StartRound("player"));
+        var roundId = engine.GetSnapshot().RoundId!.Value;
+        Assert.IsFalse(engine.AbortRound("player", Guid.NewGuid()));
+        Assert.IsTrue(engine.AbortRound("player", roundId));
+        var aborted = engine.GetSnapshot();
+        Assert.IsFalse(engine.AbortRound("player", roundId));
+        Assert.AreEqual(aborted.StateVersion, engine.GetSnapshot().StateVersion);
+        Assert.IsTrue(engine.StartRound("player"));
+        Assert.IsFalse(engine.AbortRound("player", roundId));
+        Assert.AreEqual(GamePhase.Playing, engine.GetSnapshot().Phase);
+    }
+
+    [TestMethod]
     public void AbortRoundAndReleaseRole_RequiresLocalConfirmation()
     {
         // Prüft, dass eine laufende Runde nur mit lokaler Bestätigung abgebrochen und freigegeben wird.

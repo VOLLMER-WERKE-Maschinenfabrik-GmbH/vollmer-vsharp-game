@@ -195,6 +195,24 @@ public sealed class GameEngine
         }
     }
 
+    public bool AbortRound(string clientInstanceId, Guid roundId)
+    {
+        lock (_sync)
+        {
+            if (!IsActiveClient(clientInstanceId) || _phase != GamePhase.Playing || _roundId != roundId)
+            {
+                return false;
+            }
+
+            _phase = GamePhase.Results;
+            _roundStartedTimestamp = null;
+            _tools.Clear();
+            _resolvedToolTimestamps.Clear();
+            _stateVersion++;
+            return true;
+        }
+    }
+
     public bool RegisterTool(ToolDefinition definition, ToolPlacement? placement = null)
     {
         ArgumentNullException.ThrowIfNull(definition);

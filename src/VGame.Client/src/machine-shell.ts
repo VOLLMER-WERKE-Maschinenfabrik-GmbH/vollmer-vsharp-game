@@ -176,10 +176,17 @@ export class MachineShell {
         this.setTime(state.remainingMs);
         this.setPressed("laser", state.mode === "laser");
         this.setPressed("saw", state.mode === "saw");
-        this.setEnabled("start", state.canStart || state.canRequestRole);
+        const canAbort = state.activePlayer && state.phase === "playing";
+        this.setEnabled("start", state.canStart || state.canRequestRole || canAbort);
         this.setEnabled("laser", state.canSelectMode);
         this.setEnabled("saw", state.canSelectMode);
-        this.commands.get("start")![0].textContent = state.canRequestRole ? "Übernehmen" : "Start";
+        const startLabel = canAbort ? "Abbrechen" : state.canRequestRole ? "Übernehmen" : "Start";
+        for (const button of this.commands.get("start")!) {
+            button.title = startLabel;
+            button.setAttribute("aria-label", button.classList.contains("function-key") ? `F1 ${startLabel}` : startLabel);
+        }
+        const startButton = this.commands.get("start")![0];
+        startButton.textContent = startLabel;
         this.root.dataset.mode = state.mode;
         this.root.dataset.phase = state.phase;
         if (resetPortraits) this.resetAction();
