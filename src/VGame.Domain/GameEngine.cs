@@ -26,6 +26,7 @@ public sealed class GameEngine
     private long _roleVersion;
     private int _score;
     private int _combo;
+    private bool _wasAborted;
 
     public GameEngine(GameplayOptions options, TimeProvider? timeProvider = null)
     {
@@ -186,6 +187,7 @@ public sealed class GameEngine
             _roundStartedTimestamp = _timeProvider.GetTimestamp();
             _lastMovementTimestamp = _roundStartedTimestamp.Value;
             _phase = GamePhase.Playing;
+            _wasAborted = false;
             _score = 0;
             _combo = 0;
             _tools.Clear();
@@ -205,6 +207,7 @@ public sealed class GameEngine
             }
 
             _phase = GamePhase.Results;
+            _wasAborted = true;
             _roundStartedTimestamp = null;
             _tools.Clear();
             _resolvedToolTimestamps.Clear();
@@ -452,6 +455,7 @@ public sealed class GameEngine
     private void ResetRound()
     {
         _phase = GamePhase.Attract;
+        _wasAborted = false;
         _roundId = null;
         _roundStartedTimestamp = null;
         _score = 0;
@@ -485,7 +489,8 @@ public sealed class GameEngine
             _combo,
             _roleVersion,
                 tools,
-                new GameStageArea(_options.StageAreaX, _options.StageAreaY, _options.StageAreaWidth, _options.StageAreaHeight));
+                new GameStageArea(_options.StageAreaX, _options.StageAreaY, _options.StageAreaWidth, _options.StageAreaHeight),
+                _wasAborted);
     }
 
             private static Point2 GetFeedbackPoint(IReadOnlyList<Point2> points, ZoneContact? contact)

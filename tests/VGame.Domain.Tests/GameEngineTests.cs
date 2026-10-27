@@ -381,6 +381,7 @@ public sealed class GameEngineTests
 
         Assert.IsNotNull(endedSnapshot);
         Assert.AreEqual(GamePhase.Results, endedSnapshot.Phase);
+        Assert.IsFalse(endedSnapshot.WasAborted);
         Assert.AreEqual(0, endedSnapshot.RemainingMs);
     }
 
@@ -691,6 +692,7 @@ public sealed class GameEngineTests
 
         var aborted = engine.GetSnapshot();
         Assert.AreEqual(GamePhase.Results, aborted.Phase);
+        Assert.IsTrue(aborted.WasAborted);
         Assert.AreEqual(0, aborted.RemainingMs);
         Assert.AreEqual(scored.Score, aborted.Score);
         Assert.AreEqual(scored.RoundId, aborted.RoundId);
@@ -703,6 +705,7 @@ public sealed class GameEngineTests
         Assert.IsNull(engine.AdvanceClock());
         Assert.IsTrue(engine.StartRound("player"));
         Assert.AreNotEqual(before.RoundId, engine.GetSnapshot().RoundId);
+        Assert.IsFalse(engine.GetSnapshot().WasAborted);
         Assert.AreEqual(0, engine.GetSnapshot().Score);
     }
 

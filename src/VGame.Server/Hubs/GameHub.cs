@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using VGame.Contracts;
 using VGame.Domain;
 using VGame.Server.Security;
+using VGame.Server.Services;
 
 namespace VGame.Server.Hubs;
 
@@ -11,7 +12,7 @@ public interface IGameClient
     Task ActionResolved(ActionResolved action);
 }
 
-public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOriginPolicy) : Hub<IGameClient>
+public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOriginPolicy, HighscoreService highscores) : Hub<IGameClient>
 {
     private const string ClientInstanceContextKey = "vgame.client-instance-id";
 
@@ -47,13 +48,51 @@ public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOri
     public async Task<bool> StartRound()
     {
         var clientId = GetJoinedClientId();
-        if (clientId is null || !gameEngine.StartRound(clientId))
+        if (clientId is null || !highscores.StartRound(clientId))
         {
             return false;
         }
 
         await Clients.All.SnapshotUpdated(gameEngine.GetSnapshot());
         return true;
+    }
+
+    public async Task<bool> StartRegisteredRound(PlayerRegistration registration)
+    {
+        var clientId = GetJoinedClientId();
+        if (clientId is null) return false;
+        try
+        {
+            if (!highscores.StartRound(clientId, registration)) return false;
+        }
+        catch (ArgumentException exception)
+        {
+            throw new HubException(exception.Message);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new HubException("Die Rangliste kann derzeit nicht gespeichert werden.");
+        }
+        await Clients.All.SnapshotUpdated(gameEngine.GetSnapshot());
+        return true;
+    }
+
+    public IReadOnlyList<HighscoreEntry> GetHighscores(GameMode mode)
+    {
+        EnsureJoined();
+        return highscores.GetHighscores(mode);
+    }
+
+    public OwnHighscore? GetOwnHighscore(Guid roundId)
+    {
+        var clientId = GetJoinedClientId();
+        return clientId is null ? null : highscores.GetOwnHighscore(clientId, roundId);
+    }
+
+    public bool DeleteHighscore(string deletionCode)
+    {
+        EnsureJoined();
+        return clientOriginPolicy.IsLocal(Context.GetHttpContext()) && highscores.DeleteHighscore(deletionCode);
     }
 
     public async Task<bool> AbortRound(Guid roundId)

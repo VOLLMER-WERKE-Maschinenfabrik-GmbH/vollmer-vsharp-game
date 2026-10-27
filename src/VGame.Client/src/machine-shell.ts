@@ -1,6 +1,6 @@
 import { createElement, Gauge, Waypoints, PanelTop, Stamp, Wrench, ShieldCheck, Settings, Egg, Zap, Cog, RotateCcw, Ruler, Volume2, Volume1, VolumeX, Hand, X, type IconNode } from "lucide";
 
-type ShellCommand = "start" | "laser" | "saw";
+type ShellCommand = "start" | "laser" | "saw" | "highscore";
 type WorkshopEventSettings = { enabled: boolean; durationMilliseconds: number; cooldownMilliseconds: number };
 type WorkshopEventOptions = { enabled: boolean; events: Record<string, WorkshopEventSettings> };
 type ShellState = {
@@ -148,11 +148,11 @@ export class MachineShell {
             const index = ["F1", "F2", "F3", "F4", "F5", "F6"].indexOf(event.key);
             if (index < 0) return;
             event.preventDefault();
+            if (this.root.querySelector("dialog[open]")) return;
             this.commands.get(entries[index][0])?.[0].click();
         }, { signal: this.controller.signal });
         this.updateSoundButton();
-        this.setEnabled("highscore", false);
-        for (const button of this.commands.get("highscore")!) button.title = "Highscore – noch nicht verfügbar";
+        this.setEnabled("highscore", !watcher);
         for (const command of ["start", "laser", "saw"]) this.setEnabled(command, false);
         if (!watcher) void this.loadEventOptions();
     }
@@ -280,7 +280,7 @@ export class MachineShell {
     }
 
     private execute(command: string): void {
-        if (this.watcher) return;
+        if (this.watcher || this.root.querySelector("dialog[open]")) return;
         this.setError("");
         if (command === "instructions") {
             this.demonstration = !this.demonstration;
@@ -290,7 +290,7 @@ export class MachineShell {
             this.volume = (this.volume + 1) % 3;
             this.soundHandler([1, 0.3, 0][this.volume]);
             this.updateSoundButton();
-        } else if (command === "start" || command === "laser" || command === "saw") {
+        } else if (command === "start" || command === "laser" || command === "saw" || command === "highscore") {
             if (!this.state) return;
             this.commandHandler(command);
         }

@@ -138,6 +138,16 @@ public sealed record GameSnapshot(
     int Combo,
     long RoleVersion,
     IReadOnlyList<ToolSnapshot> Tools,
-    GameStageArea? StageArea = null);
+    GameStageArea? StageArea = null,
+    bool WasAborted = false);
+
+public sealed record PlayerRegistration(string DisplayName, string? Email, bool LeaderboardConsent,
+    bool PrizeNotificationConsent, string PrivacyVersion);
+
+public sealed record HighscoreEntry(Guid EntryId, string DisplayName, GameMode Mode, int Score, DateTimeOffset CompletedAt);
+
+public sealed record PlayerDataNotice(string Version, string ContactEmail, string TimeZoneId, string Retention);
+
+public sealed record OwnHighscore(HighscoreEntry Entry, string DeletionCode);
 
 public sealed record GameStageArea(double Left, double Top, double Width, double Height);

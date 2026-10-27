@@ -6,6 +6,7 @@ import {
 import Phaser from "phaser";
 import { MachineShell } from "./machine-shell";
 import { GameAudio } from "./game-audio";
+import { PlayerDialogs, type HighscoreEntry, type OwnHighscore } from "./player-dialogs";
 
 type ClientRole = "player" | "watcher";
 type GameMode = "laser" | "saw";
@@ -44,6 +45,7 @@ type GameSnapshot = {
     roleVersion: number;
     tools: ToolSnapshot[];
     stageArea?: { left: number; top: number; width: number; height: number };
+    wasAborted?: boolean;
 };
 type JoinResponse = {
     clientInstanceId: string;
@@ -91,6 +93,8 @@ class WorkshopScene extends Phaser.Scene {
     private audio?: GameAudio;
     private readonly resolvedEvents = new Set<string>();
     private startingRound = false;
+    private playerDialogs?: PlayerDialogs;
+    private registeredRound = false;
     private readonly faceVariants: Record<ToolState, string[]> = { dull: [], inProgress: [], sharp: [], failed: [] };
 
     constructor(requestedRole: ClientRole, private readonly shell: MachineShell) {
@@ -129,6 +133,13 @@ class WorkshopScene extends Phaser.Scene {
         this.gestureTrail = this.add.graphics().setDepth(75);
         this.registerInput();
         if (this.requestedRole === "player") this.audio = new GameAudio(message => this.shell.setAudioStatus(message));
+        if (this.requestedRole === "player") {
+            this.playerDialogs = new PlayerDialogs(async mode => {
+                const entries = await this.invokeHub<HighscoreEntry[]>("GetHighscores", mode);
+                if (!entries) throw new Error();
+                return entries;
+            }, async code => await this.invokeHub<boolean>("DeleteHighscore", code) === true);
+        }
         const unlockAudio = () => {
             if (this.role === "player") void this.audio?.unlock();
         };
@@ -138,6 +149,7 @@ class WorkshopScene extends Phaser.Scene {
         }
         this.shell.bind(command => {
             if (command === "start") void this.startRound();
+            else if (command === "highscore") void this.showLeaderboard();
             else void this.selectMode(command);
         }, volume => {
             this.audio?.setVolume(volume);
@@ -146,6 +158,7 @@ class WorkshopScene extends Phaser.Scene {
             document.removeEventListener("pointerdown", unlockAudio);
             document.removeEventListener("keydown", unlockAudio);
             this.shell.destroy();
+            this.playerDialogs?.destroy();
             this.audio?.destroy();
             void this.connection.stop();
         });
@@ -275,9 +288,11 @@ class WorkshopScene extends Phaser.Scene {
             return;
         }
 
+        const roundEnded = this.snapshot?.phase === "playing" && snapshot.phase === "results";
         this.role = this.requestedRole === "player" && snapshot.activeClientId === this.clientInstanceId
             ? "player"
             : "watcher";
+        if (this.role !== "player") this.playerDialogs?.close();
         if (this.snapshot?.roundId !== snapshot.roundId || snapshot.phase !== "playing" || this.role !== "player") {
             this.activeGesture = null;
             this.gestureTrail.clear();
@@ -312,6 +327,7 @@ class WorkshopScene extends Phaser.Scene {
         const canStartRound = this.role === "player" && snapshot.phase !== "playing";
         this.shell.update({ ...snapshot, canStart: canStartRound, canSelectMode, canRequestRole,
             activePlayer: this.role === "player", targetCount: snapshot.tools.length });
+        if (roundEnded && !snapshot.wasAborted && this.role === "player") void this.showLeaderboard(true);
     }
 
     private syncTargets(tools: ToolSnapshot[]): void {
@@ -600,9 +616,27 @@ class WorkshopScene extends Phaser.Scene {
                 if (this.snapshot.roundId) await this.invokeHub<boolean>("AbortRound", this.snapshot.roundId);
                 return;
             }
+            const registration = await this.playerDialogs?.requestRegistration();
+            if (registration === undefined || !this.canBeginRound()) return;
             await this.audio?.unlock();
-            if (this.canBeginRound()) await this.invokeHub<boolean>("StartRound");
+            if (this.canBeginRound()) {
+                const accepted = registration === null
+                    ? await this.invokeHub<boolean>("StartRound")
+                    : await this.invokeHub<boolean>("StartRegisteredRound", registration);
+                this.registeredRound = accepted === true && registration !== null;
+            }
         } finally { this.startingRound = false; }
+    }
+
+    private async showLeaderboard(afterRound = false): Promise<void> {
+        if (!this.playerDialogs || !this.snapshot || this.startingRound) return;
+        const snapshot = this.snapshot;
+        const own = this.role === "player" && snapshot.roundId && snapshot.phase === "results" && !snapshot.wasAborted
+            ? await this.invokeHub<OwnHighscore | null>("GetOwnHighscore", snapshot.roundId) : undefined;
+        if (this.snapshot?.roundId !== snapshot.roundId || this.snapshot?.phase !== snapshot.phase
+            || this.snapshot?.activeClientId !== snapshot.activeClientId || this.snapshot?.mode !== snapshot.mode) return;
+        this.playerDialogs.showLeaderboard(snapshot.mode, own ?? undefined,
+            afterRound && this.registeredRound && !own ? "Die Speicherung deines Ergebnisses konnte noch nicht bestätigt werden." : "");
     }
 
     private canBeginRound(): boolean {

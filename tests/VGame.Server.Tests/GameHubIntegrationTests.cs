@@ -432,6 +432,43 @@ public sealed class GameHubIntegrationTests
 
     [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
+    public async Task PlayerRegistration_CompletedRoundPersistsAndWatcherCannotReadContacts()
+    {
+        // Prüft Registrierung, automatisches Rundenende, öffentliche Rangliste und den privaten Löschcode über echtes SignalR.
+        var clock = new RegistrationTimeProvider();
+        await using var factory = CreateFactory(clock);
+        await using var player = CreateConnection(factory);
+        await using var watcher = CreateConnection(factory);
+        await player.StartAsync(TestContext.CancellationToken);
+        await watcher.StartAsync(TestContext.CancellationToken);
+        await player.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("registration-player", ClientRole.Player), TestContext.CancellationToken);
+        await watcher.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("registration-watcher", ClientRole.Watcher), TestContext.CancellationToken);
+        var registration = new PlayerRegistration("Test player", "winner@example.invalid", true, true, "2026-10-27");
+        Assert.IsFalse(await watcher.InvokeAsync<bool>("StartRegisteredRound", registration, TestContext.CancellationToken));
+        Assert.IsTrue(await player.InvokeAsync<bool>("StartRegisteredRound", registration, TestContext.CancellationToken));
+        var running = await player.InvokeAsync<GameSnapshot>("GetSnapshot", TestContext.CancellationToken);
+        var completed = new TaskCompletionSource<GameSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        watcher.On<GameSnapshot>("SnapshotUpdated", snapshot =>
+        {
+            if (snapshot.Phase == GamePhase.Results) completed.TrySetResult(snapshot);
+        });
+        clock.Advance(TimeSpan.FromSeconds(60));
+        var result = await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.IsFalse(result.WasAborted);
+        var publicEntries = await watcher.InvokeAsync<HighscoreEntry[]>("GetHighscores", GameMode.Laser, TestContext.CancellationToken);
+        Assert.AreEqual("Test player", Assert.ContainsSingle(publicEntries).DisplayName);
+        Assert.DoesNotContain("email", JsonSerializer.Serialize(publicEntries).ToLowerInvariant());
+        Assert.IsNull(await watcher.InvokeAsync<OwnHighscore?>("GetOwnHighscore", running.RoundId!.Value, TestContext.CancellationToken));
+        var own = await player.InvokeAsync<OwnHighscore?>("GetOwnHighscore", running.RoundId!.Value, TestContext.CancellationToken);
+        Assert.IsNotNull(own);
+        Assert.IsTrue(await player.InvokeAsync<bool>("DeleteHighscore", own.DeletionCode, TestContext.CancellationToken));
+        Assert.IsEmpty(await watcher.InvokeAsync<HighscoreEntry[]>("GetHighscores", GameMode.Laser, TestContext.CancellationToken));
+        var storage = factory.Services.GetRequiredService<IConfiguration>()["PlayerData:StoragePath"]!;
+        Directory.Delete(Path.GetDirectoryName(storage)!, recursive: true);
+    }
+
+    [TestMethod]
+    [Timeout(15000, CooperativeCancellation = true)]
     public async Task AbortRound_ActivePlayerBroadcastsResultsAndCanRestart()
     {
         // Prüft den echten SignalR-Abbruch einschließlich Zuschauer-/Beitrittsschutz, Broadcast und sofortigem Neustart.
@@ -722,16 +759,34 @@ public sealed class GameHubIntegrationTests
             .Build();
     }
 
-    private static WebApplicationFactory<Program> CreateFactory()
+    private static WebApplicationFactory<Program> CreateFactory(TimeProvider? timeProvider = null)
     {
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PlayerData:StoragePath"] = Path.Combine(Path.GetTempPath(), "vgame-integration-" + Guid.NewGuid().ToString("N"), "highscores.json")
+            }));
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IClientOriginPolicy>();
                 services.AddSingleton<IClientOriginPolicy, TestLocalClientOriginPolicy>();
+                if (timeProvider is not null)
+                {
+                    services.RemoveAll<TimeProvider>();
+                    services.AddSingleton(timeProvider);
+                }
             });
         });
+    }
+
+    private sealed class RegistrationTimeProvider : TimeProvider
+    {
+        private long _ticks = new DateTimeOffset(2026, 10, 27, 11, 0, 0, TimeSpan.Zero).UtcTicks;
+        public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref _ticks), TimeSpan.Zero);
+        public override long GetTimestamp() => Interlocked.Read(ref _ticks);
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public void Advance(TimeSpan duration) => Interlocked.Add(ref _ticks, duration.Ticks);
     }
 
     private sealed class TestLocalClientOriginPolicy : IClientOriginPolicy
