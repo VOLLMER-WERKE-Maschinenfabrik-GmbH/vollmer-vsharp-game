@@ -1,9 +1,15 @@
 import type { BufferGeometry, Group, Material, PerspectiveCamera, Scene, WebGLRenderer, WebGLRenderTarget } from "three";
 
 export class AttractScreen {
+    private static readonly idleMilliseconds = 30_000;
     private readonly root = document.createElement("div");
     private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     private readonly observer: ResizeObserver;
+    private readonly dialogObserver: MutationObserver;
+    private readonly activityEvents = ["pointerdown", "pointermove", "keydown", "wheel", "input", "click"] as const;
+    private idleTimer?: ReturnType<typeof setTimeout>;
+    private playing = false;
+    private dismissClickUntil = 0;
     private renderer?: WebGLRenderer;
     private scene?: Scene;
     private camera?: PerspectiveCamera;
@@ -42,12 +48,23 @@ export class AttractScreen {
         stage.append(this.root);
         this.observer = new ResizeObserver(() => this.resize());
         this.observer.observe(this.root);
+        this.dialogObserver = new MutationObserver(() => this.resetIdle());
+        this.dialogObserver.observe(stage.closest(".machine-shell")!, { subtree: true, attributes: true, attributeFilter: ["open"] });
+        for (const event of this.activityEvents) document.addEventListener(event, this.onActivity, { capture: true, passive: false });
         document.addEventListener("visibilitychange", this.updateAnimation);
         this.reducedMotion.addEventListener("change", this.updateAnimation);
+        this.resetIdle();
+    }
+
+    setPlaying(playing: boolean): void {
+        if (this.playing === playing) return;
+        this.playing = playing;
+        this.resetIdle();
     }
 
     setActive(active: boolean): void {
         if (this.destroyed || this.active === active) return;
+        if (active && (this.playing || this.hasDialog())) return;
         this.active = active;
         this.root.hidden = !active;
         if (active) {
@@ -59,6 +76,9 @@ export class AttractScreen {
 
     destroy(): void {
         this.destroyed = true;
+        clearTimeout(this.idleTimer);
+        this.dialogObserver.disconnect();
+        for (const event of this.activityEvents) document.removeEventListener(event, this.onActivity, { capture: true });
         this.stop();
         this.observer.disconnect();
         document.removeEventListener("visibilitychange", this.updateAnimation);
@@ -70,6 +90,34 @@ export class AttractScreen {
         this.renderer?.forceContextLoss();
         this.root.remove();
     }
+
+    private hasDialog(): boolean {
+        return !!this.root.closest(".machine-shell")?.querySelector("dialog[open]");
+    }
+
+    private resetIdle(): void {
+        clearTimeout(this.idleTimer);
+        this.setActive(false);
+        if (this.destroyed || this.playing || this.hasDialog()) return;
+        this.idleTimer = setTimeout(() => this.setActive(true), AttractScreen.idleMilliseconds);
+    }
+
+    private readonly onActivity = (event: Event): void => {
+        if (event.type === "click" && performance.now() < this.dismissClickUntil) {
+            this.dismissClickUntil = 0;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            this.resetIdle();
+            return;
+        }
+        if (this.active && event.type === "pointermove") return;
+        if (this.active) {
+            if (event.type === "pointerdown") this.dismissClickUntil = performance.now() + 1500;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+        this.resetIdle();
+    };
 
     private async initialize(): Promise<void> {
         if (this.renderer || this.initializing || this.failed || this.destroyed) return;
