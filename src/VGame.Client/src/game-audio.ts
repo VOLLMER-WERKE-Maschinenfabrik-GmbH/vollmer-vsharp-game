@@ -43,10 +43,11 @@ export class GameAudio {
     private voiceTimer?: ReturnType<typeof setTimeout>;
     private decodePromise?: Promise<void>;
     private musicTrack?: MusicTrack;
+    private menuMusicTrack?: MusicTrack;
+    private currentMusicTrack?: MusicTrack;
     private musicSource?: AudioBufferSourceNode;
     private musicGain?: GainNode;
     private duckTimer?: ReturnType<typeof setTimeout>;
-    private musicStartedRound: string | null = null;
     private readonly preloadPromise: Promise<void>;
 
     constructor(private readonly report: (message: string) => void) {
@@ -57,14 +58,16 @@ export class GameAudio {
         try {
             const response = await fetch("/api/game-audio", { cache: "no-store", signal: AbortSignal.timeout(5000) });
             if (!response.ok) throw new Error();
-            const catalog = await response.json() as { pools: AudioPool[]; music: MusicTrack | null };
+            const catalog = await response.json() as { pools: AudioPool[]; music: MusicTrack | null; menuMusic?: MusicTrack | null };
             this.musicTrack = catalog.music ?? undefined;
+            this.menuMusicTrack = catalog.menuMusic ?? undefined;
             for (const pool of catalog.pools) {
                 this.pools.set(pool.poolId, pool);
                 this.bags.set(pool.poolId, new ShuffleBag(pool.variants));
             }
             const files = [...new Set(catalog.pools.flatMap(pool => pool.variants))];
             if (this.musicTrack) files.push(this.musicTrack.file);
+            if (this.menuMusicTrack) files.push(this.menuMusicTrack.file);
             await Promise.all(files.map(async filename => {
                 try {
                     const audio = await fetch(`/Assets/audio/${filename}`, { signal: AbortSignal.timeout(5000) });
@@ -117,7 +120,7 @@ export class GameAudio {
         this.roundId = roundId;
         this.active = active;
         this.playing = playing;
-        if (!active || !playing) this.stopAll();
+        if (!active || !playing) this.stopEffects();
         this.applyVolume();
         this.syncMusic();
     }
@@ -228,45 +231,46 @@ export class GameAudio {
     }
 
     private syncMusic(): void {
-        if (!this.active || !this.playing || !this.roundId) { this.stopMusic(); return; }
-        if (this.musicSource || this.musicStartedRound === this.roundId || this.context?.state !== "running" || !this.master || !this.musicTrack) return;
-        const buffer = this.buffers.get(this.musicTrack.file);
+        const track = this.playing && this.roundId ? this.musicTrack : this.menuMusicTrack;
+        if (!this.active || this.currentMusicTrack !== track) this.stopMusic();
+        if (!this.active || this.musicSource || this.context?.state !== "running" || !this.master || !track) return;
+        const buffer = this.buffers.get(track.file);
         if (!buffer) return;
-        const start = this.musicTrack.startSeconds;
-        if (buffer.duration <= start) { this.report("Hintergrundmusik ist kürzer als der Startpunkt 0:15."); return; }
+        const start = track.startSeconds;
+        if (buffer.duration <= start) { this.report("Hintergrundmusik ist kürzer als der konfigurierte Startpunkt."); return; }
         const source = this.context.createBufferSource();
         source.buffer = buffer;
         source.loop = true;
         source.loopStart = start;
         source.loopEnd = buffer.duration;
         const gain = this.context.createGain();
-        gain.gain.value = this.musicTrack.volume;
+        gain.gain.value = track.volume;
         source.connect(gain).connect(this.master);
         this.musicSource = source;
         this.musicGain = gain;
-        this.musicStartedRound = this.roundId;
+        this.currentMusicTrack = track;
         source.onended = () => { source.disconnect(); gain.disconnect(); };
         source.start(this.context.currentTime, start);
     }
 
     private duckMusic(): void {
         clearTimeout(this.duckTimer);
-        if (!this.context || !this.musicGain || !this.musicTrack) return;
+        if (!this.context || !this.musicGain || !this.currentMusicTrack) return;
         const now = this.context.currentTime;
         this.musicGain.gain.cancelScheduledValues(now);
         this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
-        this.musicGain.gain.linearRampToValueAtTime(this.musicTrack.volume * Math.pow(10, -6 / 20), now + 0.08);
+        this.musicGain.gain.linearRampToValueAtTime(this.currentMusicTrack.volume * Math.pow(10, -6 / 20), now + 0.08);
     }
 
     private restoreMusic(): void {
         if (this.effect || this.voice || !this.musicSource) return;
         clearTimeout(this.duckTimer);
         this.duckTimer = setTimeout(() => {
-            if (this.effect || this.voice || !this.context || !this.musicGain || !this.musicTrack) return;
+            if (this.effect || this.voice || !this.context || !this.musicGain || !this.currentMusicTrack) return;
             const now = this.context.currentTime;
             this.musicGain.gain.cancelScheduledValues(now);
             this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
-            this.musicGain.gain.linearRampToValueAtTime(this.musicTrack.volume, now + 0.25);
+            this.musicGain.gain.linearRampToValueAtTime(this.currentMusicTrack.volume, now + 0.25);
         }, 120);
     }
 
@@ -277,7 +281,7 @@ export class GameAudio {
         }
         this.musicSource = undefined;
         this.musicGain = undefined;
-        this.musicStartedRound = null;
+        this.currentMusicTrack = undefined;
     }
 
     stopAll(): void { this.stopEffects(); this.stopMusic(); }

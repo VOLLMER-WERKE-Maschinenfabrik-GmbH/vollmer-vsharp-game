@@ -134,7 +134,10 @@ app.MapGet("/api/game-audio", (HttpContext context, ILogger<Program> logger) =>
         var musicFile = "music/bgm.mp3";
         var music = File.Exists(Path.Combine(assetDirectory, "audio", musicFile))
             ? new { file = musicFile, startSeconds = 15, volume = Math.Pow(10, -16d / 20) } : null;
-        return Results.Ok(new { pools, music });
+        var menuMusicFile = "music/menu.mp3";
+        var menuMusic = File.Exists(Path.Combine(assetDirectory, "audio", menuMusicFile))
+            ? new { file = menuMusicFile, startSeconds = 0, volume = Math.Pow(10, -16d / 20) } : null;
+        return Results.Ok(new { pools, music, menuMusic });
     }
     catch (Exception exception) when (exception is IOException or JsonException or InvalidOperationException)
     {

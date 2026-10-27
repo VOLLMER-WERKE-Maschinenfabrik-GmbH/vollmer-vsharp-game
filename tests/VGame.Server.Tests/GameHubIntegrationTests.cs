@@ -143,6 +143,25 @@ public sealed class GameHubIntegrationTests
     }
 
     [TestMethod]
+    public async Task GameAudio_MenuMusicIsServedFromBeginning()
+    {
+        // Prüft die Menü-MP3, den ungekürzten Startpunkt und den gemeinsamen Musikpegel.
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/game-audio", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+        using var catalog = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.CancellationToken));
+        var music = catalog.RootElement.GetProperty("menuMusic");
+        Assert.AreEqual("music/menu.mp3", music.GetProperty("file").GetString());
+        Assert.AreEqual(0, music.GetProperty("startSeconds").GetInt32());
+        Assert.IsInRange(0.15, 0.17, music.GetProperty("volume").GetDouble());
+        using var audio = await client.GetAsync("/Assets/audio/music/menu.mp3", TestContext.CancellationToken);
+        Assert.AreEqual(System.Net.HttpStatusCode.OK, audio.StatusCode);
+        Assert.AreEqual("audio/mpeg", audio.Content.Headers.ContentType?.MediaType);
+        Assert.IsNotEmpty(await audio.Content.ReadAsByteArrayAsync(TestContext.CancellationToken));
+    }
+
+    [TestMethod]
     public async Task GameAudio_ExposesSixPoolsAndExistingAudioWithoutFullManifest()
     {
         // Prüft die schmale Audio-Konfiguration, alle tatsächlichen Dateireferenzen und den Schutz der vollständigen Konfiguration.

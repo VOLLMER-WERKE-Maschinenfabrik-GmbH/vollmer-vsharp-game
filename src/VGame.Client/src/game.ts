@@ -129,6 +129,13 @@ class WorkshopScene extends Phaser.Scene {
         this.gestureTrail = this.add.graphics().setDepth(75);
         this.registerInput();
         if (this.requestedRole === "player") this.audio = new GameAudio(message => this.shell.setAudioStatus(message));
+        const unlockAudio = () => {
+            if (this.role === "player") void this.audio?.unlock();
+        };
+        if (this.audio) {
+            document.addEventListener("pointerdown", unlockAudio);
+            document.addEventListener("keydown", unlockAudio);
+        }
         this.shell.bind(command => {
             if (command === "start") void this.startRound();
             else void this.selectMode(command);
@@ -136,6 +143,8 @@ class WorkshopScene extends Phaser.Scene {
             this.audio?.setVolume(volume);
         });
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            document.removeEventListener("pointerdown", unlockAudio);
+            document.removeEventListener("keydown", unlockAudio);
             this.shell.destroy();
             this.audio?.destroy();
             void this.connection.stop();
