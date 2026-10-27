@@ -99,7 +99,7 @@ dt, dd { margin: 0; }
 .connection-status.is-error { color: #ff6479; }
 .center-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) 38px; gap: 8px; }
 .stage-frame { position: relative; min-width: 0; min-height: 0; background: #080b09; overflow: hidden; border: 1px solid #dab800; }
-#game-stage { width: 100%; height: 100%; touch-action: none; }
+#game-stage { display: flow-root; width: 100%; height: 100%; touch-action: none; background-position: center; background-size: cover; background-repeat: no-repeat; }
 canvas { display: block; outline: none; }
 .command-strip, .function-keys { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; min-width: 0; }
 .command-button { font-size: 14px; }

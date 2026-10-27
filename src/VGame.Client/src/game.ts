@@ -68,6 +68,7 @@ type ActiveGesture = { startedAt: number; samples: GestureSample[] };
 
 const gameWidth = 1280;
 const gameHeight = 720;
+const showroomImagePath = "/Assets/images/background/bg_0001.webp";
 const stageArea = { x: 64, y: 201.6, width: 1152, height: 460.8 };
 
 class WorkshopScene extends Phaser.Scene {
@@ -103,7 +104,7 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     preload(): void {
-        this.load.image("showroom", "/Assets/images/background/bg_0001.webp");
+        this.load.image("showroom", showroomImagePath);
         for (const assetId of ["tool_0002", "tool_0006", "tool_0010"]) {
             this.load.image(assetId, `/Assets/images/tools/${assetId}.webp`);
         }
@@ -123,7 +124,6 @@ class WorkshopScene extends Phaser.Scene {
     }
 
     create(): void {
-        this.cameras.main.setBackgroundColor("#292f31");
         this.createBackdrop();
         this.createInterface();
         this.gestureTrail = this.add.graphics().setDepth(75);
@@ -169,8 +169,7 @@ class WorkshopScene extends Phaser.Scene {
     private createBackdrop(): void {
         const hasShowroom = this.textures.exists("showroom");
         if (hasShowroom) {
-            this.add.image(gameWidth / 2, gameHeight / 2, "showroom")
-                .setDisplaySize(gameWidth, gameHeight);
+            this.game.canvas.parentElement!.style.backgroundImage = `url("${showroomImagePath}")`;
         }
         const graphics = this.add.graphics();
         if (!hasShowroom) {
@@ -724,7 +723,7 @@ export function createGame(role: ClientRole): Phaser.Game {
         parent: "game-stage",
         width: gameWidth,
         height: gameHeight,
-        backgroundColor: "#292f31",
+        transparent: true,
         audio: { noAudio: true },
         scale: {
             mode: Phaser.Scale.FIT,
