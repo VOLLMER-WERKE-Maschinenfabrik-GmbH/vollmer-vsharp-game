@@ -7,7 +7,6 @@
     --blue: #092cf0;
     --green: #098d08;
     --cyan: #00ddff;
-    --carriage-position: 38%;
     letter-spacing: 0;
 }
 * { box-sizing: border-box; }
@@ -75,19 +74,11 @@ dt, dd { margin: 0; }
 .command-button[aria-pressed="true"], .side-mode[aria-pressed="true"] { background: #050f90; border-color: #b0c4ff; box-shadow: inset 0 3px 8px #0009; }
 .command-button:disabled, .side-mode:disabled { opacity: 0.5; }
 .command-button[data-command="start"] { background: linear-gradient(#ffb652, #e67b03); border-color: #ffc87e; color: #1a1000; box-shadow: inset 0 0 0 2px #a34e00; font-weight: bold; }
-.machine-cell { position: relative; flex: 1 1 80px; min-height: 65px; overflow: hidden; background: repeating-linear-gradient(0deg, #1e2526 0 20px, #303b3d 21px 23px); border: 1px solid #576266; }
-.machine-rail { position: absolute; top: 12%; left: 4%; width: 92%; height: 15%; background: linear-gradient(#b1b8b9, #475359); border: 2px solid #0b1214; }
-.machine-carriage { position: absolute; top: 8%; left: var(--carriage-position); width: 35%; height: 38%; border: 2px solid #111c22; background: linear-gradient(90deg, #597585, #c4d0d7, #597585); transition: left 220ms ease; }
-.machine-spindle { position: absolute; bottom: -40%; left: 35%; width: 30%; height: 40%; background: linear-gradient(90deg, #253f48, #bbc6cb, #253f48); border-bottom: 8px solid #191b1b; }
-.machine-beam { position: absolute; top: 135%; left: 49%; width: 3px; height: 95%; background: var(--cyan); box-shadow: 0 0 15px 4px #00ddff80; opacity: 0.35; }
-.machine-wheel { position: absolute; width: 85%; height: 115%; object-fit: contain; right: -78%; top: 15%; opacity: 0.45; }
-[data-mode="saw"] .machine-beam { opacity: 0; }
-[data-mode="saw"] .machine-wheel { opacity: 1; }
-[data-action] .machine-beam { opacity: 1; }
-[data-mode="saw"][data-action] .machine-beam { opacity: 0; }
-[data-mode="saw"][data-action] .machine-wheel { animation: wheel-spin 450ms linear infinite; }
-.machine-bed { position: absolute; bottom: 0; height: 20%; width: 100%; background: repeating-linear-gradient(90deg, #6d7678 0 12px, #303b3d 13px 24px); border-top: 5px solid #8e9b9f; }
-.machine-workpiece { position: absolute; bottom: 20%; left: 31%; width: 43%; height: 13%; background: #a0aeb4; border: 3px solid #283136; }
+.machine-cell { position: relative; flex: 1 1 100px; min-height: 65px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: hidden; }
+.machine-portrait { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #1e2526; border: 2px solid #576266; border-radius: 2px; }
+.machine-portrait.is-selected { border-color: #ffe600; box-shadow: inset 0 0 0 1px #ffe600; }
+.machine-portrait img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
+.machine-portrait[data-state="idle"] .portrait-idle, .machine-portrait[data-state="firing"] .portrait-firing { opacity: 1; }
 .diagnostic-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .diagnostic-cell { border: 1px solid #ae12aa; height: 38px; position: relative; padding: 4px; min-width: 0; }
 .diagnostic-cell svg { height: 22px; width: 22px; }
@@ -122,21 +113,21 @@ canvas { display: block; outline: none; }
 [data-mode="saw"] .gesture-demo svg { animation: swipe-demo 1800ms ease infinite; }
 [data-effect] .machine-cell { box-shadow: inset 0 0 22px #76fc7044; }
 [data-effect="gauge"] .rotary-axes { animation: gauge-twitch 350ms ease 4; }
-[data-effect="conveyor"] .machine-bed { animation: belt-run 1400ms linear; }
+[data-effect="conveyor"] .machine-portrait img { animation: portrait-feed 1400ms ease; }
 [data-effect="wiper"] .machine-cell::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 40%, #ffffff88 50%, transparent 60%); animation: wipe 1200ms ease both; }
-[data-effect="stamp"] .machine-workpiece, [data-effect="shield"] .machine-workpiece { background: #7ff24b; }
-[data-effect="tool"] .machine-carriage { animation: tool-change 700ms ease 2; }
-[data-effect="drive"] .machine-wheel { animation: wheel-spin 500ms linear infinite; opacity: 1; }
+[data-effect="stamp"] .machine-portrait, [data-effect="shield"] .machine-portrait { box-shadow: inset 0 0 12px #7ff24b; }
+[data-effect="tool"] .machine-portrait img { animation: tool-change 700ms ease 2; }
+[data-effect="drive"] .machine-portrait { animation: portrait-drive 500ms ease infinite alternate; }
 [data-effect="egg"] .machine-brand { animation: brand-flash 350ms ease 4; }
 [data-effect="wiper"] .machine-cell::after { animation-duration: var(--event-duration, 1400ms); }
 .is-watcher .command-strip, .is-watcher .function-keys, .is-watcher .event-rail, .is-watcher .side-modes { display: none; }
 .machine-shell.is-watcher { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .is-watcher .center-panel { grid-template-rows: minmax(0, 1fr); }
-@keyframes wheel-spin { to { transform: rotate(360deg); } }
+@keyframes portrait-drive { to { filter: brightness(1.3); } }
 @keyframes tap-demo { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(0.8); opacity: 1; } }
 @keyframes swipe-demo { 0%, 100% { transform: translateX(0); opacity: 0.4; } 60% { transform: translateX(130px); opacity: 1; } }
 @keyframes gauge-twitch { 50% { transform: translateY(-2px); color: #efff00; } }
-@keyframes belt-run { to { background-position-x: 96px; } }
+@keyframes portrait-feed { 50% { transform: translateX(8%); } }
 @keyframes wipe { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes tool-change { 50% { transform: translateY(-18%); } }
 @keyframes brand-flash { 50% { filter: brightness(1.5); } }

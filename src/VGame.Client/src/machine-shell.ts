@@ -51,9 +51,15 @@ export class MachineShell {
                     </dl>
                     <div class="rotary-axes"><span>A <b data-readout="angle">0.0°</b></span><span>C <b>0.0°</b></span></div>
                     <div class="side-modes"></div>
-                    <div class="machine-cell" aria-hidden="true">
-                        <div class="machine-rail"></div><div class="machine-carriage"><div class="machine-spindle"></div><div class="machine-beam"></div><img class="machine-wheel" src="/Assets/images/tools/tool_0010.webp" alt=""></div>
-                        <div class="machine-bed"></div><div class="machine-workpiece"></div>
+                    <div class="machine-cell" role="group" aria-label="Maschinenportraits">
+                        <div class="machine-portrait" data-portrait="laser" data-state="idle" role="img" aria-label="Laser: bereit">
+                            <img class="portrait-idle" src="/Assets/images/ui/laser-idle.webp" alt="">
+                            <img class="portrait-firing" src="/Assets/images/ui/laser-firing.webp" alt="">
+                        </div>
+                        <div class="machine-portrait" data-portrait="saw" data-state="idle" role="img" aria-label="Scheibenschleifer: bereit">
+                            <img class="portrait-idle" src="/Assets/images/ui/grinder-idle.webp" alt="">
+                            <img class="portrait-firing" src="/Assets/images/ui/grinder-firing.webp" alt="">
+                        </div>
                     </div>
                     <div class="diagnostic-grid" aria-label="Rundenstatus"></div>
                     <div class="position-title">Position</div>
@@ -158,6 +164,7 @@ export class MachineShell {
     }
 
     update(state: ShellState): void {
+        const resetPortraits = this.state?.mode !== state.mode || state.phase !== "playing";
         this.state = state;
         this.readout("score", state.score < 0 ? `-${Math.abs(state.score).toString().padStart(4, "0")}` : state.score.toString().padStart(5, "0"));
         this.readout("combo", `×${state.combo}`);
@@ -175,6 +182,8 @@ export class MachineShell {
         this.commands.get("start")![0].textContent = state.canRequestRole ? "Übernehmen" : "Start";
         this.root.dataset.mode = state.mode;
         this.root.dataset.phase = state.phase;
+        if (resetPortraits) this.resetAction();
+        else this.updatePortraits();
         this.setConnection(state.activePlayer ? "SPIELER · AKTIV" : "WATCHER · PASSIV", false);
     }
 
@@ -188,7 +197,10 @@ export class MachineShell {
         const status = this.root.querySelector<HTMLElement>(".connection-status")!;
         status.textContent = message;
         status.classList.toggle("is-error", error);
-        if (error) for (const command of ["start", "laser", "saw"]) this.setEnabled(command, false);
+        if (error) {
+            this.resetAction();
+            for (const command of ["start", "laser", "saw"]) this.setEnabled(command, false);
+        }
     }
 
     setError(message: string): void {
@@ -204,19 +216,35 @@ export class MachineShell {
     }
 
     animateAction(point: { x: number; y: number }, success: boolean): void {
+        if (this.state?.phase !== "playing") return;
         this.readout("axis-x", `${(point.x * 100).toFixed(1)} mm`);
         this.readout("axis-y", `${(point.y * 100).toFixed(1)} mm`);
         this.readout("axis-z", "12.0 mm");
         const angle = (point.x - 0.5) * 30;
         this.readout("angle", `${angle.toFixed(1)}°`);
         this.readout("axis-angle", `${angle.toFixed(1)}°`);
-        this.root.style.setProperty("--carriage-position", `${20 + point.x * 45}%`);
         this.root.dataset.action = success ? "success" : "failure";
+        this.updatePortraits();
         clearTimeout(this.actionTimer);
-        this.actionTimer = setTimeout(() => {
-            delete this.root.dataset.action;
-            this.readout("axis-z", "0.0 mm");
-        }, 450);
+        this.actionTimer = setTimeout(() => this.resetAction(), 450);
+    }
+
+    private updatePortraits(): void {
+        for (const portrait of this.root.querySelectorAll<HTMLElement>(".machine-portrait")) {
+            const selected = portrait.dataset.portrait === this.state?.mode;
+            const firing = selected && this.state?.phase === "playing" && !!this.root.dataset.action;
+            portrait.classList.toggle("is-selected", selected);
+            portrait.dataset.state = firing ? "firing" : "idle";
+            const name = portrait.dataset.portrait === "laser" ? "Laser" : "Scheibenschleifer";
+            portrait.setAttribute("aria-label", `${name}: ${selected ? "ausgewählt" : "nicht ausgewählt"}, ${firing ? "feuernd" : "bereit"}`);
+        }
+    }
+
+    private resetAction(): void {
+        clearTimeout(this.actionTimer);
+        delete this.root.dataset.action;
+        this.readout("axis-z", "0.0 mm");
+        this.updatePortraits();
     }
 
     destroy(): void {
