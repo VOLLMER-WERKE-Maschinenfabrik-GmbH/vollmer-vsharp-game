@@ -326,7 +326,7 @@ class WorkshopScene extends Phaser.Scene {
         } else {
             this.titleText.setVisible(false);
         }
-        this.attractScreen?.setActive(snapshot.phase === "attract");
+        this.attractScreen?.setActive(snapshot.phase !== "playing");
 
         const canSelectMode = this.role === "player" && snapshot.phase !== "playing";
         const canRequestRole = this.requestedRole === "player" && this.role === "watcher" && snapshot.phase !== "playing";
