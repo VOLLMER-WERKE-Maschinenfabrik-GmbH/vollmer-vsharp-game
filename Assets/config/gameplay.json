@@ -8,7 +8,7 @@
   "contactToleranceNormalized": 0.02,
   "failedDespawnMs": 600,
   "sharpDespawnMs": 1800,
-  "maxConcurrentTargets": 6,
+  "minimumConcurrentTargets": 4,
   "maxStageCoverage": 0.45,
   "minTargetSpacingFactor": 1.25,
   "stageAreaX": 0,

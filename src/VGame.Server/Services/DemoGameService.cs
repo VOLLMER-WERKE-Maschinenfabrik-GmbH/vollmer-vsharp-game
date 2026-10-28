@@ -81,7 +81,6 @@ public sealed class DemoGameService(GameEngine realGame, GameplayOptions options
     private void Spawn()
     {
         var snapshot = _demoGame!.GetSnapshot();
-        if (snapshot.Tools.Count >= _options.MaxConcurrentTargets) return;
         var candidates = artwork.Where(tool => (tool.VisualKind == "saw") == (snapshot.Mode == GameMode.Saw)).ToArray();
         if (candidates.Length == 0) return;
         var sequence = ++_spawnSequence;

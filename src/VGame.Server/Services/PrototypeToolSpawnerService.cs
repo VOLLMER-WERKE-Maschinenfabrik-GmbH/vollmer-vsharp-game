@@ -25,11 +25,11 @@ public sealed class PrototypeToolSpawnerService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             var snapshot = gameEngine.GetSnapshot();
-            if (snapshot.Phase != GamePhase.Playing || snapshot.Tools.Count >= options.MaxConcurrentTargets)
+            if (snapshot.Phase != GamePhase.Playing || snapshot.Tools.Count >= options.MinimumConcurrentTargets)
             {
                 continue;
             }

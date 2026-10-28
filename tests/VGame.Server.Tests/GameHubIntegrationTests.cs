@@ -771,7 +771,6 @@ public sealed class GameHubIntegrationTests
         var snapshot = await spawnedTools.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
         var options = factory.Services.GetRequiredService<VGame.Domain.GameplayOptions>();
 
-        Assert.IsLessThanOrEqualTo(options.MaxConcurrentTargets, snapshot.Tools.Count);
         Assert.IsNotEmpty(snapshot.Tools);
         Assert.IsTrue(snapshot.Tools.All(tool => tool.Definition.ToolId.StartsWith("prototype_", StringComparison.Ordinal)));
         Assert.AreEqual(new GameStageArea(0, 0, 1, 1), snapshot.StageArea);
@@ -783,6 +782,34 @@ public sealed class GameHubIntegrationTests
             Assert.IsTrue(start.X < 0 || start.X > 1 || start.Y < 0 || start.Y > 1);
             Assert.IsTrue(end.X < 0 || end.X > 1 || end.Y < 0 || end.Y > 1);
         }
+    }
+
+    [TestMethod]
+    [Timeout(15000, CooperativeCancellation = true)]
+    public async Task StartRound_ReplenishesToMinimumTargetCount()
+    {
+        // Prüft, dass der Spawner eine Mindestzahl bewegter Ziele zeitnah aufbaut.
+        const int minimumTargetCount = 7;
+        await using var factory = CreateFactory(minimumConcurrentTargets: minimumTargetCount);
+        await using var connection = CreateConnection(factory);
+        var filledTargets = new TaskCompletionSource<GameSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On<GameSnapshot>("SnapshotUpdated", snapshot =>
+        {
+            if (snapshot.Phase == GamePhase.Playing && snapshot.Tools.Count >= minimumTargetCount)
+            {
+                filledTargets.TrySetResult(snapshot);
+            }
+        });
+        await connection.StartAsync(TestContext.CancellationToken);
+        await connection.InvokeAsync<JoinResponse>(
+            "JoinGame",
+            new JoinRequest("full-stage-player", ClientRole.Player),
+            TestContext.CancellationToken);
+
+        Assert.IsTrue(await connection.InvokeAsync<bool>("StartRound", TestContext.CancellationToken));
+        var snapshot = await filledTargets.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.CancellationToken);
+
+        Assert.IsGreaterThanOrEqualTo(minimumTargetCount, snapshot.Tools.Count);
     }
 
     private static HubConnection CreateConnection(WebApplicationFactory<Program> factory)
@@ -801,18 +828,35 @@ public sealed class GameHubIntegrationTests
             .Build();
     }
 
-    private static WebApplicationFactory<Program> CreateFactory(TimeProvider? timeProvider = null)
+    private static WebApplicationFactory<Program> CreateFactory(TimeProvider? timeProvider = null, int? minimumConcurrentTargets = null)
     {
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            builder.ConfigureAppConfiguration((_, configuration) =>
             {
-                ["PlayerData:StoragePath"] = Path.Combine(Path.GetTempPath(), "vgame-integration-" + Guid.NewGuid().ToString("N"), "highscores.json")
-            }));
+                var overrides = new Dictionary<string, string?>
+                {
+                    ["PlayerData:StoragePath"] = Path.Combine(Path.GetTempPath(), "vgame-integration-" + Guid.NewGuid().ToString("N"), "highscores.json")
+                };
+                configuration.AddInMemoryCollection(overrides);
+            });
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IClientOriginPolicy>();
                 services.AddSingleton<IClientOriginPolicy, TestLocalClientOriginPolicy>();
+                if (minimumConcurrentTargets is not null)
+                {
+                    services.RemoveAll<VGame.Domain.GameplayOptions>();
+                    services.AddSingleton(new VGame.Domain.GameplayOptions
+                    {
+                        MinimumConcurrentTargets = minimumConcurrentTargets.Value,
+                        StageAreaX = 0,
+                        StageAreaY = 0,
+                        StageAreaWidth = 1,
+                        StageAreaHeight = 1
+                    });
+                }
+
                 if (timeProvider is not null)
                 {
                     services.RemoveAll<TimeProvider>();

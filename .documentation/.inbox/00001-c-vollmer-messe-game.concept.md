@@ -452,7 +452,7 @@ no people, no text, no watermark, no logos, no tools in the foreground, empty st
   "spawnProfiles": [
     {
       "spawnProfileId": "stage_default",
-      "maxConcurrentTargets": 6,
+      "minimumConcurrentTargets": 4,
       "maxStageCoverage": 0.45,
       "minTargetSpacingFactor": 1.25,
       "entryEdges": ["left", "right", "top", "bottom"],
@@ -480,7 +480,7 @@ no people, no text, no watermark, no logos, no tools in the foreground, empty st
 
 **Spielfläche (`stageArea`):** Für Durchflüge wird die gesamte Leinwand als Eingabefläche freigegeben (`{ x: 0, y: 0, w: 1, h: 1 }`). Die Kulisse bleibt rein dekorativ; Ziele dürfen vor Maschinen und Requisiten über das ganze Bild fliegen. Werkzeuge starten vollständig außerhalb einer zufällig gewählten Seite und verlassen das Bild auf der gegenüberliegenden Seite. Die ehemalige Begrenzung auf den freien Bodenbereich und auf zwei Einflugseiten entfällt. Lesbarkeit und Kontrast werden über die gesamte sichtbare Flugfläche geprüft.
 
-**Regeln gegen Überladung:** `maxConcurrentTargets: 6` bleibt verbindlich; auch noch außerhalb befindliche registrierte Ziele zählen dazu. Flüge laufen einmalig in 6–9 Sekunden durch und geben ihren Platz anschließend frei. Werkzeuge dürfen sich überschneiden; Flächenbelegung und Mindestabstand lösen weder Spawnsperre noch Ausweichen oder Umkehr aus. Die bisherigen Felder `maxStageCoverage` und `minTargetSpacingFactor` bleiben nur als kompatible Vertragsfelder erhalten. Die konkrete Bildschirmgröße je `sizeClass` steht im Skalierungsprofil, nicht im Prompt.
+**Mindestfüllung ohne Obergrenze:** Die Gameplay-Konfiguration hält standardmäßig mindestens `minimumConcurrentTargets: 4` registrierte Ziele vor. Fällt der Bestand darunter, wird im 250-ms-Spawntakt je ein Ziel ergänzt; eine maximale Zielzahl gibt es nicht. Auch noch außerhalb befindliche oder im kurzen Despawn befindliche Ziele zählen zum Bestand; dadurch kann die sichtbare Bühnenfläche während des Außenein- und -ausflugs vorübergehend weniger Ziele zeigen. Flüge laufen einmalig in 6–9 Sekunden durch und geben ihren Platz anschließend frei. Werkzeuge dürfen sich überschneiden; Flächenbelegung und Mindestabstand lösen weder Spawnsperre noch Ausweichen oder Umkehr aus. Die bisherigen Felder `maxStageCoverage` und `minTargetSpacingFactor` bleiben nur als kompatible Vertragsfelder erhalten. Die konkrete Bildschirmgröße je `sizeClass` steht im Skalierungsprofil, nicht im Prompt.
 
 **Farbigkeit und Kontrast auf dem Boden:** Der Boden ist orange, aber bewusst **abgesenkt** (Sättigung und Helligkeit unter `orange.600`, Konfigurationswert). Ziele tragen ihre dunkle Kontur und bleiben dadurch lesbar; Cyan (Laser), Grün (Erfolg) und Rot (Fehler) bleiben auf dem Boden eindeutig. Die Kulisse verwendet im Zielbereich keine dieser Feedbackfarben als dominante Flächenfarbe.
 
@@ -653,7 +653,7 @@ Empfohlene Werkzeuge: Phaser als 2D-Laufzeit-Engine, TypeScript für Clientcode,
 | Touch | Tap und Swipe erzeugen lokal sichtbares Feedback in $\leq 50\text{ ms}$ p95 auf dem Zielhandheld. |
 | Framerate | Aktiver Client erreicht $\geq 55\text{ FPS}$ p95, Watcher $\geq 50\text{ FPS}$ p95 unter dem festgelegten Maximalspawnprofil. |
 | Hintergrund und Verdeckung | Die Showroom-Kulisse bleibt fest; Kollegen- und Maschinenrequisiten laufen ausschließlich hinter der Zielebene und verdecken nie ein Ziel. Jedes Ziel ist mindestens $650\text{ ms}$ vor der ersten Verdeckung vollständig sichtbar; keine Verdeckung überschreitet $40\,\%$ Trefferfläche oder $450\text{ ms}$. |
-| Showroom-Bühne und Ziellast | Die gesamte Leinwand ist als Eingabefläche freigegeben; vier zufällige Flugrichtungen starten und enden außerhalb des Bildes, auch bei Rotation. Höchstens sechs registrierte Ziele dürfen sich frei überschneiden. Durchflüge enden ohne Rücklauf oder Punkteabzug; gleichzeitig berührte Überlagerungen werden nach sichtbarer Z-Reihenfolge gewertet. Lesbarkeit, Konturen und Feedback werden auch vor Maschinen und bei Überlagerung geprüft. |
+| Showroom-Bühne und Ziellast | Die gesamte Leinwand ist als Eingabefläche freigegeben; vier zufällige Flugrichtungen starten und enden außerhalb des Bildes, auch bei Rotation. Der Spawner füllt einen Bestand unter der konfigurierten Mindestzahl im 250-ms-Takt auf; es gibt keine maximale Zielzahl. Außeneinflug kann die unmittelbar sichtbare Zielzahl kurzzeitig unterschreiten. Durchflüge enden ohne Rücklauf oder Punkteabzug; gleichzeitig berührte Überlagerungen werden nach sichtbarer Z-Reihenfolge gewertet. Lesbarkeit, Konturen, Framerate und Feedback werden auch bei hoher Ziellast auf Zielhardware geprüft. |
 | Retro-Editor-Huelle | Die Showroom-Buehne ist der einzige Ziel- und Gestenbereich; linke Achsen reagieren sichtbar auf Laser und Schleifswipe, ohne selbst Eingabe zu werden. |
 | Design-Tokens und Kontrast | HUD, Bedienhülle und Overlays verwenden die semantische VWC-Zuordnung: Orange für Fokus/Hauptaktion, Cyan für Laser, Grün für Erfolg und Rot für Fehler; `yellow.600` bleibt Shell- und Weltakzent. Der orangefarbene Bühnenboden ist ein abgesenkter Weltwert und macht weder Fokus-/Hauptaktionsorange noch Fehlerrot verwechselbar; Ziele behalten auf dem Boden ihre dunkle Kontur. Touch- und Tastaturfokus bleiben auf anthrazitfarbenem Gehäuse sichtbar; Spielwelt und Effekte bleiben innerhalb der Lesbarkeitsregeln gestalterisch frei. |
 | Funktions- und F-Tastenleiste | `F1` ist ein nicht rastender Starttaster. `F2` bis `F6` sind ausreichend grosse, visuell rastende Schalter; `F2 LASER` und `F3 SCHEIBE` bleiben stets gegenseitig ausschliessend, genau einer ist aktiv. Die grauen Tasten enthalten ausser `F1` bis `F6` keinen weiteren Text. Alle rechten Ereignistasten sind wertungsneutral und respektieren `TON`. |
@@ -771,14 +771,14 @@ Lead-Erzeugung und Preisbenachrichtigung nach der Messe sind festgelegt. Eine re
 
 ## 7.7 R-07: Showroom-Kulisse und Lesbarkeit der Ziele
 ### tl;dr
-- **Favorit:** Durchflüge über die gesamte Leinwand zulassen, auf sechs registrierte Ziele begrenzen und Kontrast bei Überlagerung prüfen.
+- **Favorit:** Durchflüge über die gesamte Leinwand zulassen, bei niedrigem Bestand mindestens vier Ziele nachführen und Kontrast sowie Framerate bei hoher Ziellast prüfen.
 
 ### Detail
 Ein vollständiges Showroom-Bild ist reizvoll, kann aber Ziele überdecken oder deren Kontrast senken. Weil die Kulisse fest und bildschirmfüllend ist, hängt die Lesbarkeit an der Bildkomposition (freier Bodenbereich) und an der Zieldichte, nicht an einer Kamera.
 
 ### Empfehlung
-- **Favorit:** Die volle Leinwand gemäß Kap. 3.5 verwenden, Kollegen hinter die Zielebene legen und `maxConcurrentTargets: 6` beibehalten; den Bühnen-/Ziellastcheck in AP-04 und B-02 um frei kreuzende Ziele und Trefferpriorität erweitern.
-- **Begründung:** Einmalige Durchflüge verhindern dauerhaft belegte Bahnen; Zielzahlgrenze, dunkle Konturen und sichtbare Trefferpriorität halten die gewünschte Überlagerung spielbar, ohne sie durch Kollisionsabstände wieder zu verhindern.
+- **Favorit:** Die volle Leinwand gemäß Kap. 3.5 verwenden, Kollegen hinter die Zielebene legen und mindestens vier registrierte Ziele nachführen; den Bühnen-/Ziellastcheck in AP-04 und B-02 um frei kreuzende Ziele, hohe Ziellast und Trefferpriorität erweitern.
+- **Begründung:** Einmalige Durchflüge verhindern dauerhaft belegte Bahnen; dunkle Konturen und sichtbare Trefferpriorität halten die gewünschte Überlagerung spielbar. Eine Obergrenze wird nicht gesetzt; Framerate und Lesbarkeit sind deshalb ausdrücklich bei hoher Ziellast zu prüfen.
 
 # 8. Offene Punkte
 
@@ -899,7 +899,7 @@ Leonardo AI liefert Rasterbilder ohne verlässliche Transparenz; deshalb ist der
 ## 8.9 ✅ OP-09: Showroom-Bühnenbild und freie Zielfläche
 ### tl;dr
 - Geklärt: Das Spielbühnenbild ist die feste Showroom-Kulisse `bg_0001` mit orangefarbenem Boden, festen Maschinen und gelegentlich laufenden Kollegen in grauen Vollmer-Polos; die Ziele liegen davor und bleiben dadurch lesbar.
-- Geklärt: Die gesamte Leinwand wird für einmalige Durchflüge verwendet; `maxConcurrentTargets` begrenzt die registrierten Ziele, Überschneidungen werden nicht durch Flächen- oder Abstandslimits verhindert.
+- Geklärt: Die gesamte Leinwand wird für einmalige Durchflüge verwendet; bei weniger als vier registrierten Zielen wird nachgefüllt. Es gibt keine Obergrenze, Überschneidungen werden nicht durch Flächen- oder Abstandslimits verhindert.
 
 ### Detail
 Das Showroom-Bild wird mit Leonardo AI nach Kap. 3.4.6 dieses Dokuments erzeugt; Mengen und Ablage stehen in [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4.3, das konkrete Referenzbild liefert der Auftraggeber nach. Kollegen sind eigenständige `showroom-cast`-Requisiten und werden nicht in die Kulisse eingebrannt, damit sie animierbar und abschaltbar bleiben. Farbigkeit, Kontrast und Abdeckungsregeln stehen in Kap. 3.5; die technische Tiefenstaffelung steht in 00002 Kap. 3.6.

@@ -61,7 +61,7 @@ public sealed class ManifestContractTests
         const string json = """
             {"manifestVersion":"1.0.0","configVersion":"test-version","tools":[],"audioPools":[],
             "stage":[{"assetId":"bg_0001","category":"showroom-stage","file":"images/background/bg_0001.webp","layer":"backdrop","stageArea":{"x":0.05,"y":0.28,"w":0.9,"h":0.64}},{"assetId":"cast_0001","category":"showroom-cast","file":"images/background/cast_0001.png","layer":"props","cooldownMs":25000,"enabled":false}],
-            "spawnProfiles":[{"spawnProfileId":"stage_default","maxConcurrentTargets":6,"maxStageCoverage":0.45,"minTargetSpacingFactor":1.25,"entryEdges":["left","right"],"difficultyRampId":"ramp_default"}],
+            "spawnProfiles":[{"spawnProfileId":"stage_default","minimumConcurrentTargets":4,"maxStageCoverage":0.45,"minTargetSpacingFactor":1.25,"entryEdges":["left","right"],"difficultyRampId":"ramp_default"}],
             "effects":[{"assetId":"fx_0001"}]}
             """;
         var manifest = JsonSerializer.Deserialize<AssetManifest>(json, SerializerOptions)!;

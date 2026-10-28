@@ -105,7 +105,7 @@ public sealed class ManifestBuilder(IReadOnlyList<AudioPoolManifestEntry>? audio
             var manifest = new AssetManifest
             {
                 ManifestVersion = "1.0.0", ConfigVersion = Hash(File.ReadAllBytes(configurationPath)), Tools = tools, AudioPools = pools, Stage = stages,
-                SpawnProfiles = [new() { SpawnProfileId = "stage_default", MaxConcurrentTargets = gameplay.MaxConcurrentTargets,
+                SpawnProfiles = [new() { SpawnProfileId = "stage_default", MinimumConcurrentTargets = gameplay.MinimumConcurrentTargets,
                     MaxStageCoverage = gameplay.MaxStageCoverage, MinimumTargetSpacingFactor = gameplay.MinTargetSpacingFactor,
                     EntryEdges = ["left", "right"], DifficultyRampId = "ramp_default" }]
             };

@@ -110,7 +110,7 @@ public sealed record ManifestStageArea
 public sealed record SpawnProfileManifestEntry
 {
     public required string SpawnProfileId { get; init; }
-    public required int MaxConcurrentTargets { get; init; }
+    public int MinimumConcurrentTargets { get; init; } = 4;
     public required double MaxStageCoverage { get; init; }
     [JsonPropertyName("minTargetSpacingFactor")]
     public required double MinimumTargetSpacingFactor { get; init; }

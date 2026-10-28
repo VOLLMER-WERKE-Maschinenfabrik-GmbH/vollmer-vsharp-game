@@ -19,6 +19,7 @@ public sealed class GameplayOptionsTests
         Assert.AreEqual(-5, options.WrongSharpeningPenalty);
         Assert.AreEqual(-10, options.ShaftHitPenalty);
         Assert.AreEqual(-5, options.MissPenalty);
+        Assert.AreEqual(4, options.MinimumConcurrentTargets);
     }
 
     [TestMethod]
@@ -56,5 +57,17 @@ public sealed class GameplayOptionsTests
     {
         // Erzwingt mindestens 55 Prozent detaillfreie Zielfläche gemäß Bühnenvertrag.
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new GameplayOptions { StageAreaWidth = 0.8, StageAreaHeight = 0.6 }.Validate());
+    }
+
+    [TestMethod]
+    public void Validate_MinimumConcurrentTargetsMustBePositiveAndHasNoUpperLimit()
+    {
+        // Verhindert ungültige Mindestzielzahlen und erlaubt Werte über dem früheren Maximum.
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new GameplayOptions { MinimumConcurrentTargets = 0 }.Validate());
+        var options = new GameplayOptions { MinimumConcurrentTargets = 7 };
+
+        options.Validate();
+
+        Assert.AreEqual(7, options.MinimumConcurrentTargets);
     }
 }

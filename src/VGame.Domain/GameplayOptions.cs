@@ -11,7 +11,7 @@ public sealed record GameplayOptions
     public double ContactToleranceNormalized { get; init; } = 0.02;
     public int FailedDespawnMs { get; init; } = 600;
     public int SharpDespawnMs { get; init; } = 1800;
-    public int MaxConcurrentTargets { get; init; } = 6;
+    public int MinimumConcurrentTargets { get; init; } = 4;
     public double MaxStageCoverage { get; init; } = 0.45;
     public double MinTargetSpacingFactor { get; init; } = 1.25;
     public double StageAreaX { get; init; } = 0.05;
@@ -50,9 +50,14 @@ public sealed record GameplayOptions
             throw new ArgumentOutOfRangeException(nameof(FailedDespawnMs));
         }
 
-        if (SharpDespawnMs <= 0 || MaxConcurrentTargets is < 1 or > 6)
+        if (SharpDespawnMs <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(SharpDespawnMs));
+        }
+
+        if (MinimumConcurrentTargets < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MinimumConcurrentTargets));
         }
 
         if (!double.IsFinite(MaxStageCoverage) || MaxStageCoverage is <= 0 or > 0.45
