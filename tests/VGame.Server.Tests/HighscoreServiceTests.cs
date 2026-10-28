@@ -44,6 +44,27 @@ public sealed class HighscoreServiceTests
     }
 
     [TestMethod]
+    public void Highscores_UsesModeSelectedAtRoundStartAfterModeChangesBeforePersistence()
+    {
+        // Prüft, dass ein Moduswechsel nach Rundenende die Ranglistenzuordnung nicht verändert.
+        var clock = new AdjustableTimeProvider();
+        var engine = CreateEngine(clock);
+        var service = CreateService(engine, clock);
+        Assert.IsTrue(engine.SelectMode("player", GameMode.Laser));
+        Assert.IsTrue(service.StartRound("player", Registration()));
+
+        clock.Advance(TimeSpan.FromSeconds(60));
+        engine.AdvanceClock();
+        Assert.AreEqual(GamePhase.Results, engine.GetSnapshot().Phase);
+        Assert.IsTrue(engine.SelectMode("player", GameMode.Saw));
+
+        service.ProcessRound();
+
+        Assert.HasCount(1, service.GetHighscores(GameMode.Laser));
+        Assert.IsEmpty(service.GetHighscores(GameMode.Saw));
+    }
+
+    [TestMethod]
     public void Highscores_AbortedAndAnonymousRoundsAreNotSaved()
     {
         // Prüft, dass Besucherabbrüche und Runden ohne Registrierung keine personenbezogenen Einträge erzeugen.

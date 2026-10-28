@@ -47,8 +47,9 @@ public sealed class HighscoreService
             _gameEngine.AdvanceClock();
             ProcessCurrentRound();
             if (!_gameEngine.StartRound(clientInstanceId)) return false;
+            var startedSnapshot = _gameEngine.GetSnapshot();
             _pending = validated is null ? null : new PendingRegistration(
-                _gameEngine.GetSnapshot().RoundId!.Value, clientInstanceId, validated, _timeProvider.GetUtcNow());
+                startedSnapshot.RoundId!.Value, clientInstanceId, validated, startedSnapshot.Mode, _timeProvider.GetUtcNow());
             return true;
         }
     }
@@ -143,7 +144,7 @@ public sealed class HighscoreService
         }
 
         var entry = new StoredHighscore(pending.RoundId, pending.ClientInstanceId,
-            new HighscoreEntry(Guid.NewGuid(), pending.Registration.DisplayName, snapshot.Mode, snapshot.Score, completedAt),
+            new HighscoreEntry(Guid.NewGuid(), pending.Registration.DisplayName, pending.Mode, snapshot.Score, completedAt),
             pending.Registration.Email, pending.Registration.LeaderboardConsent, pending.Registration.PrizeNotificationConsent,
             pending.Registration.PrivacyVersion, pending.ConsentedAt, expiresAt,
             Convert.ToHexString(RandomNumberGenerator.GetBytes(24)));
@@ -174,7 +175,7 @@ public sealed class HighscoreService
     }
 
     private sealed record PendingRegistration(Guid RoundId, string ClientInstanceId, PlayerRegistration Registration,
-        DateTimeOffset ConsentedAt, DateTimeOffset? CompletedAt = null, DateTimeOffset? ExpiresAt = null);
+        GameMode Mode, DateTimeOffset ConsentedAt, DateTimeOffset? CompletedAt = null, DateTimeOffset? ExpiresAt = null);
 
     private sealed record StoredHighscore(Guid RoundId, string OwnerClientId, HighscoreEntry Entry, string? Email,
         bool LeaderboardConsent, bool PrizeNotificationConsent, string PrivacyVersion, DateTimeOffset ConsentedAt,
