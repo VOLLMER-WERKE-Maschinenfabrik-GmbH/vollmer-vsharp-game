@@ -13,7 +13,6 @@ public sealed class DemoGameService(GameEngine realGame, GameplayOptions options
     private readonly GameplayOptions _options = options with { RoundDurationSeconds = 60 };
     private long? _sequenceStarted;
     private long _segment = -1;
-    private long _lastSpawnAt = -1;
     private long _lastActionAt = -1;
     private long _commandSequence;
     private int _spawnSequence;
@@ -46,7 +45,6 @@ public sealed class DemoGameService(GameEngine realGame, GameplayOptions options
             {
                 _segment = segment;
                 _demoGame = null;
-                _lastSpawnAt = -1;
                 _lastActionAt = -1;
                 _spawnSequence = 0;
                 _commandSequence = 0;
@@ -61,36 +59,37 @@ public sealed class DemoGameService(GameEngine realGame, GameplayOptions options
             if (_demoGame is null) return _snapshot = new DemoSnapshot("logo", remaining, null, []);
 
             _demoGame.AdvanceClock();
-            if (_lastSpawnAt < 0 || withinSegment - _lastSpawnAt >= 1000)
-            {
-                _lastSpawnAt = withinSegment;
-                Spawn();
-            }
             ActionResolved? action = null;
             if (withinSegment >= 1600 && (_lastActionAt < 0 || withinSegment - _lastActionAt >= 850))
             {
                 _lastActionAt = withinSegment;
                 action = PlayAction();
             }
+            FillMinimumTargets();
             var snapshot = _demoGame.GetSnapshot() with { RemainingMs = remaining };
             return _snapshot = new DemoSnapshot(snapshot.Mode == GameMode.Laser ? "laser" : "saw", remaining,
                 snapshot, action is null ? [] : [action]);
         }
     }
 
-    private void Spawn()
+    private void FillMinimumTargets()
     {
         var snapshot = _demoGame!.GetSnapshot();
         var candidates = artwork.Where(tool => (tool.VisualKind == "saw") == (snapshot.Mode == GameMode.Saw)).ToArray();
         if (candidates.Length == 0) return;
-        var sequence = ++_spawnSequence;
-        var definition = candidates[(sequence - 1) % candidates.Length] with
+
+        while (snapshot.Tools.Count(tool => tool.State == ToolState.Dull) < _options.MinimumConcurrentTargets)
         {
-            ToolId = $"demo_{snapshot.RoundId:N}_{sequence}", ZOrder = sequence
-        };
-        var placement = PrototypeToolSpawnerService.CreatePlacement(definition.BoundingWidthNormalized,
-            definition.BoundingHeightNormalized, (sequence - 1) % 4);
-        _demoGame.RegisterTool(definition, placement);
+            var sequence = ++_spawnSequence;
+            var definition = candidates[(sequence - 1) % candidates.Length] with
+            {
+                ToolId = $"demo_{snapshot.RoundId:N}_{sequence}", ZOrder = sequence
+            };
+            var placement = PrototypeToolSpawnerService.CreatePlacement(definition.BoundingWidthNormalized,
+                definition.BoundingHeightNormalized, (sequence - 1) % 4);
+            if (!_demoGame.RegisterTool(definition, placement)) break;
+            snapshot = _demoGame.GetSnapshot();
+        }
     }
 
     private ActionResolved? PlayAction()

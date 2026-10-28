@@ -40,6 +40,24 @@ public sealed class DemoGameServiceTests
     [TestMethod]
     [DataRow(GameMode.Laser)]
     [DataRow(GameMode.Saw)]
+    public void Demo_StartsWithMinimumConcurrentTargets(GameMode mode)
+    {
+        // Prüft, dass der Demo-Modus bei beiden Werkzeugarten direkt mehrere Ziele vorführt.
+        var clock = new DemoTimeProvider();
+        var options = new GameplayOptions { StageAreaX = 0, StageAreaY = 0, StageAreaWidth = 1, StageAreaHeight = 1 };
+        var service = new DemoGameService(new GameEngine(options, clock), options, clock, Tools());
+        service.Advance();
+        clock.Advance(TimeSpan.FromSeconds(mode == GameMode.Laser ? 60 : 180));
+
+        var demo = service.Advance();
+
+        Assert.AreEqual(mode, demo.Game!.Mode);
+        Assert.IsGreaterThanOrEqualTo(options.MinimumConcurrentTargets, demo.Game.Tools.Count);
+    }
+
+    [TestMethod]
+    [DataRow(GameMode.Laser)]
+    [DataRow(GameMode.Saw)]
     public void Demo_ComputerUsesRealActionsWithSuccessesAndMistakesWithoutChangingRealGame(GameMode mode)
     {
         // Prüft echte Erfolgs-/Fehlerausgänge im isolierten Motor und unveränderte öffentliche Spielerdaten.

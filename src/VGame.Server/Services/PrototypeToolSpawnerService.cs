@@ -29,33 +29,41 @@ public sealed class PrototypeToolSpawnerService(
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             var snapshot = gameEngine.GetSnapshot();
-            if (snapshot.Phase != GamePhase.Playing || snapshot.Tools.Count >= options.MinimumConcurrentTargets)
+            if (snapshot.Phase != GamePhase.Playing)
             {
                 continue;
             }
 
-            var spawnSequence = Interlocked.Increment(ref _spawnSequence);
             var isSawMode = snapshot.Mode == GameMode.Saw;
             var candidates = artworkTools.Where(tool => (tool.VisualKind == "saw") == isSawMode).ToArray();
-            var artwork = candidates.Length > 0 ? candidates[(spawnSequence - 1) % candidates.Length] : null;
-            var width = artwork?.BoundingWidthNormalized ?? ToolWidthNormalized;
-            var height = artwork?.BoundingHeightNormalized ?? ToolHeightNormalized;
-            var placement = CreatePlacement(width, height, Random.Shared.Next(4));
-
-            var toolId = $"prototype_{snapshot.RoundId:N}_{spawnSequence:0000}";
-            var definition = artwork is not null ? artwork with { ToolId = toolId, ZOrder = spawnSequence } : new ToolDefinition(
-                toolId,
-                spawnSequence,
-                [ShaftZone, CutZone],
-                0,
-                ToolWidthNormalized,
-                ToolHeightNormalized,
-                isSawMode ? "saw" : Random.Shared.Next(2) == 0 ? "drill" : "cutter",
-                !isSawMode && Random.Shared.Next(4) == 0);
-
-            if (gameEngine.RegisterTool(definition, placement))
+            var spawnedAny = false;
+            while (snapshot.Tools.Count(tool => tool.State == ToolState.Dull) < options.MinimumConcurrentTargets)
             {
-                await hubContext.Clients.All.SnapshotUpdated(gameEngine.GetSnapshot());
+                var spawnSequence = Interlocked.Increment(ref _spawnSequence);
+                var artwork = candidates.Length > 0 ? candidates[(spawnSequence - 1) % candidates.Length] : null;
+                var width = artwork?.BoundingWidthNormalized ?? ToolWidthNormalized;
+                var height = artwork?.BoundingHeightNormalized ?? ToolHeightNormalized;
+                var placement = CreatePlacement(width, height, Random.Shared.Next(4));
+
+                var toolId = $"prototype_{snapshot.RoundId:N}_{spawnSequence:0000}";
+                var definition = artwork is not null ? artwork with { ToolId = toolId, ZOrder = spawnSequence } : new ToolDefinition(
+                    toolId,
+                    spawnSequence,
+                    [ShaftZone, CutZone],
+                    0,
+                    ToolWidthNormalized,
+                    ToolHeightNormalized,
+                    isSawMode ? "saw" : Random.Shared.Next(2) == 0 ? "drill" : "cutter",
+                    !isSawMode && Random.Shared.Next(4) == 0);
+
+                if (!gameEngine.RegisterTool(definition, placement)) break;
+                spawnedAny = true;
+                snapshot = gameEngine.GetSnapshot();
+            }
+
+            if (spawnedAny)
+            {
+                await hubContext.Clients.All.SnapshotUpdated(snapshot);
             }
         }
     }
