@@ -90,7 +90,7 @@ class WorkshopScene extends Phaser.Scene {
     private targetContainers = new Map<string, Phaser.GameObjects.Container>();
     private titleText!: Phaser.GameObjects.Text;
     private attractScreen?: AttractScreen;
-    private touchFeedback?: Phaser.GameObjects.Arc;
+    private touchFeedback?: Phaser.GameObjects.Container;
     private inputArea = { ...stageArea };
     private gestureTrail!: Phaser.GameObjects.Graphics;
     private feedbackObjects = new Set<Phaser.GameObjects.GameObject>();
@@ -114,6 +114,15 @@ class WorkshopScene extends Phaser.Scene {
 
     preload(): void {
         this.load.image("showroom", showroomImagePath);
+        for (const group of ["grind", "laser", "mistake", "single"]) {
+            for (let variant = 1; variant <= 4; variant++) {
+                const key = `${group}_spark${variant}`;
+                this.load.image(key, `/Assets/images/sparks/${key}.webp`);
+            }
+        }
+        this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+            if (file.key.includes("_spark")) this.shell.setError(`Funkenbild konnte nicht geladen werden: ${file.key}`);
+        });
         for (const assetId of ["tool_0002", "tool_0006", "tool_0010"]) {
             this.load.image(assetId, `/Assets/images/tools/${assetId}.webp`);
         }
@@ -745,20 +754,10 @@ class WorkshopScene extends Phaser.Scene {
             this.touchFeedback.destroy();
         }
 
-        const color = action.outcome === "success" ? 0x94e200 : 0xfe0e26;
         const target = snapshot.tools.find(tool => tool.definition.toolId === action.toolId);
         const feedbackPoint = action.feedbackPoint ?? this.lastGesturePoint ?? target?.placement?.center ?? { x: 0.5, y: 0.5 };
         if (!demo) this.shell.animateAction(feedbackPoint, action.outcome === "success");
-        const feedback = this.trackFeedback(this.add.circle(feedbackPoint.x * gameWidth, feedbackPoint.y * gameHeight, 26, color, 0.55)
-            .setDepth(80));
-        this.touchFeedback = feedback;
-        this.tweens.add({
-            targets: feedback,
-            alpha: 0,
-            scale: 2.4,
-            duration: 260,
-            onComplete: () => feedback.destroy()
-        });
+        this.showSparkFeedback(action, snapshot.mode, feedbackPoint);
         const labels: Record<Outcome, string> = { success: `+${action.scoreDelta}`, shaft_hit: `SCHAFT ${action.scoreDelta}`,
             wrong_sharpening: `FALSCH ${action.scoreDelta}`, miss: `DANEBEN ${action.scoreDelta}` };
         const text = this.trackFeedback(this.add.text(Phaser.Math.Clamp(feedbackPoint.x * gameWidth, 90, gameWidth - 90),
@@ -768,9 +767,75 @@ class WorkshopScene extends Phaser.Scene {
         this.tweens.add({ targets: text, y: text.y - 18, alpha: 0, duration: 550, onComplete: () => text.destroy() });
     }
 
+    private showSparkFeedback(action: ActionResolved, mode: GameMode, point: Point2): void {
+        const success = action.outcome === "success";
+        const missed = action.outcome === "miss";
+        const group = success ? (mode === "saw" ? "grind" : "laser") : "mistake";
+        let seed = 0;
+        for (const character of action.eventId) seed = (seed * 31 + character.charCodeAt(0)) | 0;
+        const variant = (seed >>> 0) % 4 + 1;
+        const key = `${group}_spark${variant}`;
+        const particleKey = `single_spark${variant}`;
+        if (!this.textures.exists(key) || !this.textures.exists(particleKey)) {
+            this.shell.setError("Funkenbilder fehlen. Bitte die Spiel-Assets prüfen und die Seite neu laden.");
+            return;
+        }
+        const feedback = this.trackFeedback(this.add.container(point.x * gameWidth, point.y * gameHeight).setDepth(80));
+        this.touchFeedback = feedback;
+        const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const size = missed ? 76 : success ? (mode === "saw" ? 260 : 220) : 150;
+        const flash = this.trackFeedback(this.add.image(0, 0, key).setDisplaySize(size, size));
+        feedback.add(flash);
+        const initialScale = flash.scaleX;
+        flash.setScale(initialScale * 0.65);
+        this.tweens.add({
+            targets: flash,
+            scale: initialScale * (reducedMotion ? 1 : 1.15),
+            alpha: { value: 0, ease: "Cubic.In" },
+            duration: missed ? 180 : 320,
+            ease: "Cubic.Out"
+        });
+        const particleCount = reducedMotion || missed ? 0 : success ? 12 : 5;
+        for (let index = 0; index < particleCount; index++) {
+            const angle = success && mode === "saw"
+                ? -Math.PI * 0.85 + index / (particleCount - 1) * Math.PI
+                : index / particleCount * Math.PI * 2 + variant * 0.35;
+            const distance = (success ? 80 : 40) + ((index * 37 + variant * 11) % 75);
+            const spark = this.trackFeedback(this.add.image(0, 0, particleKey)
+                .setDisplaySize(28 + index % 4 * 10, 4 + index % 3)
+                .setRotation(angle));
+            if (!success) spark.setTint(0xff485c);
+            else if (mode === "laser") spark.setTint(0xb6ffdf);
+            feedback.add(spark);
+            this.tweens.add({
+                targets: spark,
+                x: Math.cos(angle) * distance,
+                y: Math.sin(angle) * distance + 24,
+                alpha: { value: 0, ease: "Quad.In" },
+                scaleX: spark.scaleX * 0.25,
+                scaleY: spark.scaleY * 0.3,
+                duration: 260 + index % 4 * 55,
+                ease: "Cubic.Out"
+            });
+        }
+        this.tweens.add({
+            targets: feedback,
+            alpha: 0,
+            delay: 360,
+            duration: 100,
+            onComplete: () => {
+                feedback.destroy();
+                if (this.touchFeedback === feedback) this.touchFeedback = undefined;
+            }
+        });
+    }
+
     private trackFeedback<T extends Phaser.GameObjects.GameObject>(effect: T): T {
         this.feedbackObjects.add(effect);
-        effect.once(Phaser.GameObjects.Events.DESTROY, () => this.feedbackObjects.delete(effect));
+        effect.once(Phaser.GameObjects.Events.DESTROY, () => {
+            this.tweens.killTweensOf(effect);
+            this.feedbackObjects.delete(effect);
+        });
         return effect;
     }
 
