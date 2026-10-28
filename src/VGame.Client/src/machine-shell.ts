@@ -1,6 +1,6 @@
-import { createElement, Gauge, Waypoints, PanelTop, Stamp, Wrench, ShieldCheck, Settings, Egg, Zap, Cog, RotateCcw, Ruler, Volume2, Volume1, VolumeX, Hand, X, type IconNode } from "lucide";
+import { createElement, Gauge, Waypoints, PanelTop, Stamp, Wrench, ShieldCheck, Settings, Egg, Zap, Cog, RotateCcw, Ruler, Volume2, Volume1, VolumeX, X, type IconNode } from "lucide";
 
-type ShellCommand = "start" | "laser" | "saw" | "highscore";
+type ShellCommand = "start" | "laser" | "saw" | "instructions" | "highscore";
 type WorkshopEventSettings = { enabled: boolean; durationMilliseconds: number; cooldownMilliseconds: number };
 type WorkshopEventOptions = { enabled: boolean; events: Record<string, WorkshopEventSettings> };
 type ShellState = {
@@ -22,7 +22,6 @@ export class MachineShell {
     private readonly controller = new AbortController();
     private readonly watcher: boolean;
     private volume = 0;
-    private demonstration = false;
     private state?: ShellState;
     private eventTimer?: ReturnType<typeof setTimeout>;
     private readonly eventButtons = new Map<string, HTMLButtonElement>();
@@ -74,7 +73,6 @@ export class MachineShell {
                 </aside>
                 <div class="center-panel">
                     <div class="stage-frame"><div id="game-stage" aria-label="Spielbühne"></div>
-                        <div class="gesture-demo" hidden aria-label="Gesten-Demonstration"></div>
                         <div class="shell-error" role="alert" hidden></div>
                     </div>
                     <nav class="command-strip" aria-label="Spielbefehle"></nav>
@@ -142,7 +140,6 @@ export class MachineShell {
             drawer.setAttribute("aria-label", expanded ? "Ereignisleiste schließen" : "Ereignisleiste öffnen");
             drawer.replaceChildren(this.icon(expanded ? X : Settings));
         }, { signal: this.controller.signal });
-        this.root.querySelector(".gesture-demo")!.append(this.icon(Hand));
         document.addEventListener("keydown", event => {
             if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
             const index = ["F1", "F2", "F3", "F4", "F5", "F6"].indexOf(event.key);
@@ -152,6 +149,7 @@ export class MachineShell {
             this.commands.get(entries[index][0])?.[0].click();
         }, { signal: this.controller.signal });
         this.updateSoundButton();
+        this.setEnabled("instructions", !watcher);
         this.setEnabled("highscore", !watcher);
         for (const command of ["start", "laser", "saw"]) this.setEnabled(command, false);
         if (!watcher) void this.loadEventOptions();
@@ -180,6 +178,7 @@ export class MachineShell {
         this.setEnabled("start", state.canStart || state.canRequestRole || canAbort);
         this.setEnabled("laser", state.canSelectMode);
         this.setEnabled("saw", state.canSelectMode);
+        this.setEnabled("instructions", state.phase !== "playing");
         const startLabel = canAbort ? "Abbrechen" : state.canRequestRole ? "Übernehmen" : "Start";
         for (const button of this.commands.get("start")!) {
             button.title = startLabel;
@@ -282,16 +281,13 @@ export class MachineShell {
     private execute(command: string): void {
         if (this.watcher || this.root.querySelector("dialog[open]")) return;
         this.setError("");
-        if (command === "instructions") {
-            this.demonstration = !this.demonstration;
-            this.root.querySelector<HTMLElement>(".gesture-demo")!.hidden = !this.demonstration;
-            this.setPressed(command, this.demonstration);
-        } else if (command === "sound") {
+        if (command === "sound") {
             this.volume = (this.volume + 1) % 3;
             this.soundHandler([1, 0.3, 0][this.volume]);
             this.updateSoundButton();
-        } else if (command === "start" || command === "laser" || command === "saw" || command === "highscore") {
+        } else if (command === "start" || command === "laser" || command === "saw" || command === "instructions" || command === "highscore") {
             if (!this.state) return;
+            if (command === "instructions" && this.state.phase === "playing") return;
             this.commandHandler(command);
         }
     }
@@ -361,7 +357,6 @@ export class MachineShell {
             button.setAttribute("aria-label", label);
         }
         this.setPressed("sound", this.volume !== 2);
-        this.setEnabled("instructions", !this.watcher);
     }
 
     private readout(name: string, value: string): void {

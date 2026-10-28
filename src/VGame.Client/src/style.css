@@ -135,9 +135,6 @@ canvas { display: block; outline: none; }
 .event-button:last-child svg { color: #ffffb2; }
 .event-drawer-toggle { display: none; }
 .shell-error { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 8px; background: #650718; color: white; font-size: 13px; overflow-wrap: anywhere; pointer-events: none; }
-.gesture-demo { position: absolute; top: 22%; left: 12%; width: 76%; height: 60%; pointer-events: none; }
-.gesture-demo svg { position: absolute; left: 30%; top: 45%; width: 44px; height: 44px; color: #fff; filter: drop-shadow(0 2px 3px #000); animation: tap-demo 1800ms ease infinite; }
-[data-mode="saw"] .gesture-demo svg { animation: swipe-demo 1800ms ease infinite; }
 [data-effect] .machine-cell { box-shadow: inset 0 0 22px #76fc7044; }
 [data-effect="gauge"] .rotary-axes { animation: gauge-twitch 350ms ease 4; }
 [data-effect="conveyor"] .machine-portrait img { animation: portrait-feed 1400ms ease; }
@@ -151,8 +148,6 @@ canvas { display: block; outline: none; }
 .machine-shell.is-watcher { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .is-watcher .center-panel { grid-template-rows: minmax(0, 1fr); }
 @keyframes portrait-drive { to { filter: brightness(1.3); } }
-@keyframes tap-demo { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(0.8); opacity: 1; } }
-@keyframes swipe-demo { 0%, 100% { transform: translateX(0); opacity: 0.4; } 60% { transform: translateX(130px); opacity: 1; } }
 @keyframes gauge-twitch { 50% { transform: translateY(-2px); color: #efff00; } }
 @keyframes portrait-feed { 50% { transform: translateX(8%); } }
 @keyframes wipe { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
@@ -246,6 +241,9 @@ canvas { display: block; outline: none; }
 .cam-own { display: grid; gap: 12px; min-width: 0; }
 .cam-own p { margin: 0; font-size: 13px; }
 .cam-own output { overflow-wrap: anywhere; color: #91f700; }
+.cam-instructions { display: grid; gap: 18px; line-height: 1.55; }
+.cam-instructions h2 { margin: 0 0 6px; color: var(--selection-yellow); font-size: 15px; }
+.cam-instructions p { margin: 0; }
 @media (max-width: 700px) {
     .cam-form { padding: 16px; gap: 16px; }
     .cam-header img { width: 154px; height: 40px; }

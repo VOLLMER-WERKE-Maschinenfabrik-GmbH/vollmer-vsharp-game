@@ -14,6 +14,7 @@ export class PlayerDialogs {
     private readonly controller = new AbortController();
     private readonly registration = document.createElement("dialog");
     private readonly leaderboard = document.createElement("dialog");
+    private readonly instructions = document.createElement("dialog");
     private readonly form: HTMLFormElement;
     private notice?: PlayerDataNotice;
     private registrationSequence = 0;
@@ -81,7 +82,20 @@ export class PlayerDialogs {
             this.own = undefined;
             this.renderOwn();
         }, { signal: this.controller.signal });
-        document.getElementById("game")!.append(this.registration, this.leaderboard);
+
+        this.instructions.className = "cam-dialog";
+        this.instructions.setAttribute("aria-labelledby", "instructions-title");
+        this.instructions.innerHTML = `
+            <section class="cam-form">
+                <header class="cam-header"><img src="/Assets/images/ui/vollmer-logo.png" alt="VOLLMER"><h1 id="instructions-title">ANLEITUNG</h1></header>
+                <div class="cam-instructions">
+                    <section><h2>LASER</h2><p>Tippe auf die Schneide des Werkzeugs. Der Schaft ist tabu.</p></section>
+                    <section><h2>SCHEIBE</h2><p>Beginne außerhalb der Scheibe, streiche über die Schneidkante und beende den Wisch wieder außerhalb. Triffst du den Blattkörper oder die innere Fläche, geht die Scheibe kaputt. Richtung und Länge sind egal.</p></section>
+                </div>
+                <footer class="cam-actions"><button type="button" data-close>Zurück</button></footer>
+            </section>`;
+        this.instructions.querySelector("[data-close]")!.addEventListener("click", () => this.instructions.close(), { signal: this.controller.signal });
+        document.getElementById("game")!.append(this.registration, this.leaderboard, this.instructions);
     }
 
     requestRegistration(): Promise<PlayerRegistration | null | undefined> {
@@ -109,9 +123,16 @@ export class PlayerDialogs {
         if (message) this.error(this.leaderboard, message);
     }
 
+    showInstructions(): void {
+        if (this.instructions.open) return;
+        this.close();
+        this.instructions.showModal();
+    }
+
     close(): void {
         this.finishRegistration(undefined);
         if (this.leaderboard.open) this.leaderboard.close();
+        if (this.instructions.open) this.instructions.close();
         this.own = undefined;
         this.renderOwn();
     }
@@ -121,6 +142,7 @@ export class PlayerDialogs {
         this.controller.abort();
         this.registration.remove();
         this.leaderboard.remove();
+        this.instructions.remove();
     }
 
     private input(name: string): HTMLInputElement {

@@ -166,6 +166,7 @@ class WorkshopScene extends Phaser.Scene {
         this.shell.bind(command => {
             if (command === "start") void this.startRound();
             else if (command === "highscore") void this.showLeaderboard();
+            else if (command === "instructions") this.showInstructions();
             else void this.selectMode(command);
         }, volume => {
             this.audio?.setVolume(volume);
@@ -687,6 +688,11 @@ class WorkshopScene extends Phaser.Scene {
             || this.snapshot?.activeClientId !== snapshot.activeClientId || this.snapshot?.mode !== snapshot.mode) return;
         this.playerDialogs.showLeaderboard(snapshot.mode, own ?? undefined,
             afterRound && this.registeredRound && !own ? "Die Speicherung deines Ergebnisses konnte noch nicht bestätigt werden." : "");
+    }
+
+    private showInstructions(): void {
+        if (!this.playerDialogs || !this.snapshot || this.snapshot.phase === "playing" || this.startingRound) return;
+        this.playerDialogs.showInstructions();
     }
 
     private canBeginRound(): boolean {

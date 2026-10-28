@@ -269,7 +269,7 @@ export class GameAudio {
         const now = this.context.currentTime;
         this.musicGain.gain.cancelScheduledValues(now);
         this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
-        this.musicGain.gain.linearRampToValueAtTime(this.currentMusicTrack.volume * Math.pow(10, -6 / 20), now + 0.08);
+        this.musicGain.gain.linearRampToValueAtTime(this.currentMusicTrack.volume * Math.pow(10, -3 / 20), now + 0.08);
     }
 
     private restoreMusic(): void {
