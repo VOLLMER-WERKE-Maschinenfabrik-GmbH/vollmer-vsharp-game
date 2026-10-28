@@ -92,6 +92,8 @@ dt, dd { margin: 0; }
 .stage-frame { position: relative; min-width: 0; min-height: 0; background: #080b09; overflow: hidden; border: 1px solid #dab800; }
 #game-stage { display: flow-root; width: 100%; height: 100%; touch-action: none; background-position: center; background-size: cover; background-repeat: no-repeat; }
 .attract-screen { position: absolute; inset: 0; z-index: 2; overflow: hidden; background: #fff; color: #111; pointer-events: none; container-type: size; }
+.attract-screen::after { content: ""; position: absolute; inset: 0; z-index: 4; background: #fff; opacity: 0; pointer-events: none; }
+.attract-screen.is-transitioning::after { animation: attract-white-flash 320ms ease-in-out; }
 .attract-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .attract-logo { position: absolute; top: 26%; left: 50%; width: auto; height: auto; max-width: min(76%, 640px); max-height: 23%; background: #000; transform: translate(-50%, -50%); }
 .attract-title { position: absolute; top: 48%; left: 50%; margin: 0; padding: 6px 12px; background: #000; color: #fff; transform: translate(-50%, -50%); font: 54px/1 "Bahnschrift", sans-serif; }
@@ -104,6 +106,7 @@ dt, dd { margin: 0; }
 .attract-demo-status { position: absolute; top: 64%; left: 50%; width: max-content; max-width: 92%; transform: translateX(-50%); text-align: center; }
 .attract-demo-label { display: block; padding: 6px 14px; background: var(--selection-yellow); color: #092cf0; font: bold 22px/1.2 "Consolas", monospace; animation: demo-blink 1400ms step-end infinite; }
 @keyframes demo-blink { 0%, 100% { background-color: var(--selection-yellow); color: #092cf0; } 50% { background-color: #092cf0; color: var(--selection-yellow); } }
+@keyframes attract-white-flash { 0%, 100% { opacity: 0; } 35%, 65% { opacity: 0.9; } }
 @container (max-height: 360px) {
     .attract-demo-status { top: 62%; }
     .attract-demo-label { padding: 3px 10px; font-size: 14px; }
@@ -207,6 +210,7 @@ canvas { display: block; outline: none; }
     *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
     .attract-demo-label, .attract-prompt { animation: none; }
     .attract-demo-label { opacity: 1; }
+    .attract-screen.is-transitioning::after { animation: none; }
 }
 .cam-dialog { width: min(760px, calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 3px solid #676b6c; border-radius: 4px; background: #000; color: #f3f4f0; font: 16px "Consolas", monospace; overflow: auto; }
 .cam-dialog::backdrop { background: #000b; }

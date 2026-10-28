@@ -15,6 +15,9 @@ export class AttractScreen {
     private active = false;
     private demo = false;
     private readonly demoStatus = document.createElement("div");
+    private readonly finishTransition = (event: AnimationEvent): void => {
+        if (event.animationName === "attract-white-flash") this.root.classList.remove("is-transitioning");
+    };
     private initializing = false;
     private destroyed = false;
     private failed = false;
@@ -49,6 +52,7 @@ export class AttractScreen {
         this.root.dataset.presentation = "logo";
         this.root.append(logo, title, information, this.demoStatus, prompt);
         stage.append(this.root);
+        this.root.addEventListener("animationend", this.finishTransition);
         this.observer = new ResizeObserver(() => this.resize());
         this.observer.observe(this.root);
         document.addEventListener("visibilitychange", this.updateAnimation);
@@ -74,6 +78,11 @@ export class AttractScreen {
         this.root.dataset.presentation = state?.mode ?? "logo";
         this.demoStatus.hidden = !this.demo;
         if (changed) {
+            if (this.active && !this.reducedMotion.matches) {
+                this.root.classList.remove("is-transitioning");
+                void this.root.offsetWidth;
+                this.root.classList.add("is-transitioning");
+            }
             this.resize();
             this.updateAnimation();
         }
@@ -83,6 +92,7 @@ export class AttractScreen {
         this.destroyed = true;
         this.stop();
         this.observer.disconnect();
+        this.root.removeEventListener("animationend", this.finishTransition);
         document.removeEventListener("visibilitychange", this.updateAnimation);
         this.reducedMotion.removeEventListener("change", this.updateAnimation);
         this.geometry?.dispose();
