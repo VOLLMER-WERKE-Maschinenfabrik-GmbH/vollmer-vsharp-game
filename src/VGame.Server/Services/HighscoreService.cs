@@ -131,16 +131,31 @@ public sealed class HighscoreService
             return;
         }
         if (snapshot.Phase != GamePhase.Results) return;
-        var localDate = TimeZoneInfo.ConvertTime(now, _timeZone).Date.AddDays(1);
-        var expiresAt = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localDate, _timeZone));
-        var entry = new StoredHighscore(_pending.RoundId, _pending.ClientInstanceId,
-            new HighscoreEntry(Guid.NewGuid(), _pending.Registration.DisplayName, snapshot.Mode, snapshot.Score, now),
-            _pending.Registration.Email, _pending.Registration.LeaderboardConsent, _pending.Registration.PrizeNotificationConsent,
-            _pending.Registration.PrivacyVersion, _pending.ConsentedAt, expiresAt,
+        var pending = _pending;
+        var completedAt = pending.CompletedAt ?? now;
+        var expiresAt = pending.ExpiresAt ?? GetNextLocalMidnight(completedAt);
+        pending = pending with { CompletedAt = completedAt, ExpiresAt = expiresAt };
+        _pending = pending;
+        if (expiresAt <= now)
+        {
+            _pending = null;
+            return;
+        }
+
+        var entry = new StoredHighscore(pending.RoundId, pending.ClientInstanceId,
+            new HighscoreEntry(Guid.NewGuid(), pending.Registration.DisplayName, snapshot.Mode, snapshot.Score, completedAt),
+            pending.Registration.Email, pending.Registration.LeaderboardConsent, pending.Registration.PrizeNotificationConsent,
+            pending.Registration.PrivacyVersion, pending.ConsentedAt, expiresAt,
             Convert.ToHexString(RandomNumberGenerator.GetBytes(24)));
         Persist([.. _entries, entry]);
         _entries.Add(entry);
         _pending = null;
+    }
+
+    private DateTimeOffset GetNextLocalMidnight(DateTimeOffset completedAt)
+    {
+        var localDate = TimeZoneInfo.ConvertTime(completedAt, _timeZone).Date.AddDays(1);
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localDate, _timeZone));
     }
 
     private void Persist(IReadOnlyList<StoredHighscore> entries)
@@ -159,7 +174,7 @@ public sealed class HighscoreService
     }
 
     private sealed record PendingRegistration(Guid RoundId, string ClientInstanceId, PlayerRegistration Registration,
-        DateTimeOffset ConsentedAt);
+        DateTimeOffset ConsentedAt, DateTimeOffset? CompletedAt = null, DateTimeOffset? ExpiresAt = null);
 
     private sealed record StoredHighscore(Guid RoundId, string OwnerClientId, HighscoreEntry Entry, string? Email,
         bool LeaderboardConsent, bool PrizeNotificationConsent, string PrivacyVersion, DateTimeOffset ConsentedAt,

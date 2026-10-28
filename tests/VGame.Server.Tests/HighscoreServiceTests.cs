@@ -81,6 +81,57 @@ public sealed class HighscoreServiceTests
     }
 
     [TestMethod]
+    public void Highscores_StorageRetryPreservesCompletionTimestampAndExpiry()
+    {
+        // Prüft, dass ein fehlgeschlagener Speicherversuch Abschlusszeit und folgende Ortsmitternacht beibehält.
+        var clock = new AdjustableTimeProvider(new DateTimeOffset(2026, 10, 28, 22, 58, 50, TimeSpan.Zero));
+        var engine = CreateEngine(clock);
+        var storagePath = Path.Combine(_directory, "highscores.json");
+        Directory.CreateDirectory(storagePath);
+        var service = CreateService(engine, clock, storagePath);
+        Assert.IsTrue(service.StartRound("player", Registration()));
+        clock.Advance(TimeSpan.FromSeconds(60));
+        var completedAt = clock.GetUtcNow();
+        engine.AdvanceClock();
+
+        Assert.ThrowsExactly<UnauthorizedAccessException>(service.ProcessRound);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        Directory.Delete(storagePath);
+        service.ProcessRound();
+
+        var entry = Assert.ContainsSingle(service.GetHighscores(GameMode.Laser));
+        Assert.AreEqual(completedAt, entry.CompletedAt);
+        using var document = JsonDocument.Parse(File.ReadAllText(storagePath));
+        var expiresAt = document.RootElement[0].GetProperty("expiresAt").GetDateTimeOffset();
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        var nextLocalMidnight = TimeZoneInfo.ConvertTime(completedAt, timeZone).Date.AddDays(1);
+        var expectedExpiry = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(nextLocalMidnight, timeZone));
+        Assert.AreEqual(expectedExpiry, expiresAt);
+    }
+
+    [TestMethod]
+    public void Highscores_RetryAfterPendingExpiryDiscardsRegistration()
+    {
+        // Prüft, dass ein Speicherversuch nach der zugesagten Löschfrist keinen neuen Eintrag mehr erzeugt.
+        var clock = new AdjustableTimeProvider(new DateTimeOffset(2026, 10, 28, 22, 58, 50, TimeSpan.Zero));
+        var engine = CreateEngine(clock);
+        var storagePath = Path.Combine(_directory, "highscores.json");
+        Directory.CreateDirectory(storagePath);
+        var service = CreateService(engine, clock, storagePath);
+        Assert.IsTrue(service.StartRound("player", Registration()));
+        clock.Advance(TimeSpan.FromSeconds(60));
+        engine.AdvanceClock();
+
+        Assert.ThrowsExactly<UnauthorizedAccessException>(service.ProcessRound);
+        clock.Advance(TimeSpan.FromSeconds(11));
+        Directory.Delete(storagePath);
+        service.ProcessRound();
+
+        Assert.IsEmpty(service.GetHighscores(GameMode.Laser));
+        Assert.IsFalse(File.Exists(storagePath));
+    }
+
+    [TestMethod]
     public void Highscores_DeletionCodeRemovesTheEntirePrivateRecord()
     {
         // Prüft die Löschung über den privaten Code und die Ablehnung unbekannter Codes.
@@ -142,11 +193,11 @@ public sealed class HighscoreServiceTests
         return engine;
     }
 
-    private HighscoreService CreateService(GameEngine engine, TimeProvider clock)
+    private HighscoreService CreateService(GameEngine engine, TimeProvider clock, string? storagePath = null)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["PlayerData:StoragePath"] = Path.Combine(_directory, "highscores.json"),
+            ["PlayerData:StoragePath"] = storagePath ?? Path.Combine(_directory, "highscores.json"),
             ["PlayerData:ContactEmail"] = "privacy@example.invalid"
         }).Build();
         return new HighscoreService(engine, clock, configuration);
@@ -154,7 +205,8 @@ public sealed class HighscoreServiceTests
 
     private sealed class AdjustableTimeProvider : TimeProvider
     {
-        private DateTimeOffset _now = new(2026, 10, 27, 11, 0, 0, TimeSpan.Zero);
+        private DateTimeOffset _now;
+        public AdjustableTimeProvider(DateTimeOffset? now = null) => _now = now ?? new DateTimeOffset(2026, 10, 27, 11, 0, 0, TimeSpan.Zero);
         public override DateTimeOffset GetUtcNow() => _now;
         public override long GetTimestamp() => _now.UtcTicks;
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
