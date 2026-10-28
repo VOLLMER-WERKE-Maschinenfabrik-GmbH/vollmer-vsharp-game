@@ -784,9 +784,16 @@ class WorkshopScene extends Phaser.Scene {
             wrong_sharpening: `FALSCH ${action.scoreDelta}`, miss: `DANEBEN ${action.scoreDelta}` };
         const text = this.trackFeedback(this.add.text(Phaser.Math.Clamp(feedbackPoint.x * gameWidth, 90, gameWidth - 90),
             Phaser.Math.Clamp(feedbackPoint.y * gameHeight - 30, 24, gameHeight - 30), labels[action.outcome],
-            { fontFamily: "Bahnschrift, sans-serif", fontSize: "22px", fontStyle: "bold", color: action.outcome === "success" ? "#b6ff72" : "#ff8894",
+            { fontFamily: "Bahnschrift, sans-serif", fontSize: "30px", fontStyle: "bold", color: "#ffe600",
                 stroke: "#172225", strokeThickness: 4 }).setOrigin(0.5).setDepth(81));
         this.tweens.add({ targets: text, y: text.y - 18, alpha: 0, duration: 550, onComplete: () => text.destroy() });
+        if (action.outcome === "success" && action.combo >= 2) {
+            const comboText = this.trackFeedback(this.add.text(Phaser.Math.Clamp(feedbackPoint.x * gameWidth, 100, gameWidth - 100),
+                Phaser.Math.Clamp(feedbackPoint.y * gameHeight + 20, 32, gameHeight - 28), `KOMBO ×${action.combo}`,
+                { fontFamily: "Bahnschrift, sans-serif", fontSize: "26px", fontStyle: "bold", color: "#ffe600",
+                    stroke: "#172225", strokeThickness: 4 }).setOrigin(0.5).setDepth(82));
+            this.tweens.add({ targets: comboText, y: comboText.y - 22, alpha: 0, duration: 850, onComplete: () => comboText.destroy() });
+        }
     }
 
     private showSparkFeedback(action: ActionResolved, mode: GameMode, point: Point2): void {
