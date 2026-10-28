@@ -2,7 +2,7 @@ import { createElement, Gauge, Waypoints, PanelTop, Stamp, Wrench, ShieldCheck, 
 
 type ShellCommand = "start" | "laser" | "saw" | "instructions" | "highscore";
 type WorkshopEventSettings = { enabled: boolean; durationMilliseconds: number; cooldownMilliseconds: number };
-type WorkshopEventOptions = { enabled: boolean; events: Record<string, WorkshopEventSettings> };
+type WorkshopEventOptions = { enabled: boolean; surpriseUnlockAfterDistinctEvents: number; events: Record<string, WorkshopEventSettings> };
 type ShellState = {
     score: number;
     combo: number;
@@ -26,6 +26,8 @@ export class MachineShell {
     private eventTimer?: ReturnType<typeof setTimeout>;
     private readonly eventButtons = new Map<string, HTMLButtonElement>();
     private readonly eventCooldowns = new Map<string, number>();
+    private readonly completedSurpriseEvents = new Set<string>();
+    private surpriseUnlocked = false;
     private eventCooldownTimer?: ReturnType<typeof setTimeout>;
     private eventOptions?: WorkshopEventOptions;
     private eventConfigurationUnavailable = false;
@@ -296,6 +298,14 @@ export class MachineShell {
         const options = this.eventOptions?.events[effect];
         if (this.watcher || !this.eventOptions?.enabled || !options?.enabled || button.disabled || this.root.dataset.effect) return;
         if ((this.eventCooldowns.get(effect) ?? 0) > performance.now()) return;
+        if (effect === "egg" && !this.surpriseUnlocked) return;
+        if (effect === "egg") {
+            this.completedSurpriseEvents.clear();
+            this.surpriseUnlocked = false;
+        } else {
+            this.completedSurpriseEvents.add(effect);
+            this.surpriseUnlocked = this.completedSurpriseEvents.size >= this.eventOptions.surpriseUnlockAfterDistinctEvents;
+        }
         this.eventCooldowns.set(effect, performance.now() + options.durationMilliseconds + options.cooldownMilliseconds);
         this.root.dataset.effect = effect;
         this.root.style.setProperty("--event-duration", `${options.durationMilliseconds}ms`);
@@ -316,13 +326,17 @@ export class MachineShell {
             if (typeof options !== "object" || options === null) throw new Error();
             const candidate = options as WorkshopEventOptions;
             if (typeof candidate.enabled !== "boolean" || typeof candidate.events !== "object" || candidate.events === null
+                || !Number.isInteger(candidate.surpriseUnlockAfterDistinctEvents)
+                || candidate.surpriseUnlockAfterDistinctEvents < 1 || candidate.surpriseUnlockAfterDistinctEvents > 7
                 || Object.keys(candidate.events).length !== this.eventButtons.size
                 || [...this.eventButtons.keys()].some(name => {
                     const event = candidate.events[name];
                     return !event || typeof event.enabled !== "boolean" || !Number.isInteger(event.durationMilliseconds)
                         || event.durationMilliseconds < 1 || event.durationMilliseconds > 2000
                         || !Number.isInteger(event.cooldownMilliseconds) || event.cooldownMilliseconds < 0 || event.cooldownMilliseconds > 60000;
-                })) throw new Error();
+                })
+                || candidate.surpriseUnlockAfterDistinctEvents > Object.entries(candidate.events)
+                    .filter(([name, event]) => name !== "egg" && event.enabled).length) throw new Error();
             this.eventOptions = candidate;
             this.refreshEventButtons();
         } catch {
@@ -339,8 +353,16 @@ export class MachineShell {
         let nextExpiration = Number.POSITIVE_INFINITY;
         for (const [name, button] of this.eventButtons) {
             const expiresAt = this.eventCooldowns.get(name) ?? 0;
+            const surpriseLocked = name === "egg" && !this.surpriseUnlocked;
             button.disabled = this.watcher || !this.eventOptions?.enabled || !this.eventOptions.events[name]?.enabled
-                || Boolean(this.root.dataset.effect) || expiresAt > now;
+                || surpriseLocked || Boolean(this.root.dataset.effect) || expiresAt > now;
+            if (name === "egg" && this.eventOptions) {
+                const remaining = Math.max(0, this.eventOptions.surpriseUnlockAfterDistinctEvents - this.completedSurpriseEvents.size);
+                const label = this.surpriseUnlocked ? "Überraschung bereit"
+                    : `Überraschung: noch ${remaining} verschiedene Aktionen`;
+                button.title = label;
+                button.setAttribute("aria-label", label);
+            }
             if (expiresAt > now) nextExpiration = Math.min(nextExpiration, expiresAt);
         }
         if (Number.isFinite(nextExpiration)) {

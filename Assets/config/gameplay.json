@@ -17,6 +17,7 @@
   "stageAreaHeight": 1,
   "workshopEvents": {
     "enabled": true,
+    "surpriseUnlockAfterDistinctEvents": 3,
     "events": {
       "gauge": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
       "conveyor": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },

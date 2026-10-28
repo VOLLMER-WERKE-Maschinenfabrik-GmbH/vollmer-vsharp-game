@@ -265,6 +265,7 @@ public sealed class GameHubIntegrationTests
         var options = await response.Content.ReadFromJsonAsync<WorkshopEventOptions>(TestContext.CancellationToken);
         Assert.IsNotNull(options);
         options.Validate();
+        Assert.AreEqual(3, options.SurpriseUnlockAfterDistinctEvents);
         Assert.HasCount(8, options.Events);
         Assert.AreEqual(1400, options.Events["gauge"].DurationMilliseconds);
         Assert.AreEqual(3000, options.Events["gauge"].CooldownMilliseconds);
@@ -299,6 +300,7 @@ public sealed class GameHubIntegrationTests
         configuration["WorkshopEvents:Events:gauge:Enabled"] = "false";
         configuration["WorkshopEvents:Events:gauge:DurationMilliseconds"] = "2000";
         configuration["WorkshopEvents:Events:gauge:CooldownMilliseconds"] = "10000";
+        configuration["WorkshopEvents:SurpriseUnlockAfterDistinctEvents"] = "5";
 
         var options = await client.GetFromJsonAsync<WorkshopEventOptions>("/api/workshop-events", TestContext.CancellationToken);
         Assert.IsNotNull(options);
@@ -306,6 +308,18 @@ public sealed class GameHubIntegrationTests
         Assert.IsFalse(options.Events["gauge"].Enabled);
         Assert.AreEqual(2000, options.Events["gauge"].DurationMilliseconds);
         Assert.AreEqual(10000, options.Events["gauge"].CooldownMilliseconds);
+        Assert.AreEqual(5, options.SurpriseUnlockAfterDistinctEvents);
+    }
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(8)]
+    public void WorkshopEvents_InvalidSurpriseUnlockThresholdIsRejected(int threshold)
+    {
+        // Prüft den konfigurierbaren Freischaltwert zwischen einer und sieben verschiedenen Aktionen.
+        var options = new WorkshopEventOptions { SurpriseUnlockAfterDistinctEvents = threshold };
+
+        Assert.ThrowsExactly<ArgumentException>(options.Validate);
     }
 
     [TestMethod]

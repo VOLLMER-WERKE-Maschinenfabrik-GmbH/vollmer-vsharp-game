@@ -130,19 +130,29 @@ canvas { display: block; outline: none; }
 .function-key[aria-pressed="true"] { background: linear-gradient(#42494f, #747b81); box-shadow: inset 0 4px 6px #000a; border-color: #93a3ae; }
 .function-key:disabled { color: #bbb; opacity: 0.6; }
 .event-rail { grid-column: 2; grid-row: 1 / 3; display: grid; grid-template-rows: repeat(8, minmax(0, 1fr)); gap: 6px; min-height: 0; }
-.event-button { border-radius: 8px; border: 2px solid #0a1508; background: linear-gradient(130deg, #13b010, #006000); box-shadow: inset 0 1px 2px #73e863, inset 0 -3px 3px #004b00, 0 2px #161c16; display: grid; place-items: center; min-height: 0; padding: 4px; }
-.event-button svg { width: 65%; height: 65%; max-width: 48px; max-height: 48px; }
+.event-button { position: relative; overflow: hidden; border-radius: 8px; border: 2px solid #0a1508; background: linear-gradient(130deg, #13b010, #006000); box-shadow: inset 0 1px 2px #73e863, inset 0 -3px 3px #004b00, 0 2px #161c16; display: grid; place-items: center; min-height: 0; padding: 4px; transition: transform 110ms ease, filter 110ms ease; }
+.event-button svg { width: 65%; height: 65%; max-width: 48px; max-height: 48px; transform-origin: center; }
 .event-button:hover:not(:disabled) { filter: brightness(1.2); }
 .event-button.is-active { background: #005b00; box-shadow: inset 0 4px 8px #001a00; }
+.event-button:active:not(:disabled) { transform: translateY(2px); }
 .event-button:disabled:not(.is-active) { opacity: 0.45; }
 .event-button:last-child svg { color: #ffffb2; }
+.event-button.is-active[data-event="gauge"] svg { animation: event-gauge 420ms ease-in-out 2; }
+.event-button.is-active[data-event="conveyor"] svg { animation: event-conveyor 700ms ease-in-out 2; }
+.event-button.is-active[data-event="wiper"] svg { animation: event-wiper 600ms ease-in-out 2; }
+.event-button.is-active[data-event="stamp"] svg { animation: event-stamp 500ms cubic-bezier(.2,.8,.2,1.3) 2; }
+.event-button.is-active[data-event="tool"] svg { animation: event-tool 650ms ease-in-out 2; }
+.event-button.is-active[data-event="shield"] svg { animation: event-shield 700ms ease-in-out 2; }
+.event-button.is-active[data-event="drive"] svg { animation: event-drive 500ms linear 3; }
+.event-button.is-active[data-event="egg"] svg { animation: event-egg 500ms ease-in-out 3; }
 .event-drawer-toggle { display: none; }
 .shell-error { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 8px; background: #650718; color: white; font-size: 13px; overflow-wrap: anywhere; pointer-events: none; }
 [data-effect] .machine-cell { box-shadow: inset 0 0 22px #76fc7044; }
 [data-effect="gauge"] .rotary-axes { animation: gauge-twitch 350ms ease 4; }
 [data-effect="conveyor"] .machine-portrait img { animation: portrait-feed 1400ms ease; }
 [data-effect="wiper"] .machine-cell::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 40%, #ffffff88 50%, transparent 60%); animation: wipe 1200ms ease both; }
-[data-effect="stamp"] .machine-portrait, [data-effect="shield"] .machine-portrait { box-shadow: inset 0 0 12px #7ff24b; }
+[data-effect="stamp"] .machine-cell::after { content: "OK"; position: absolute; z-index: 2; left: 50%; top: 50%; display: grid; place-items: center; width: 62px; height: 62px; border: 4px double #ff3148; color: #ff3148; background: #ffe600dd; font: bold 22px/1 "Consolas", monospace; transform: translate(-50%, -50%) rotate(-12deg) scale(0); box-shadow: 0 0 12px #000b; animation: stamp-impact var(--event-duration, 1400ms) cubic-bezier(.2,.8,.2,1.3) both; }
+[data-effect="shield"] .machine-cell::after { content: "✓"; position: absolute; z-index: 2; left: 50%; top: 50%; display: grid; place-items: center; width: 58px; height: 68px; background: #098d08; color: #fff; font: bold 36px/1 "Bahnschrift", sans-serif; clip-path: polygon(50% 0, 94% 18%, 88% 62%, 50% 100%, 12% 62%, 6% 18%); filter: drop-shadow(0 0 8px #91f700); transform: translate(-50%, -50%) scale(.3); animation: shield-seal var(--event-duration, 1400ms) ease-in-out both; }
 [data-effect="tool"] .machine-portrait img { animation: tool-change 700ms ease 2; }
 [data-effect="drive"] .machine-portrait { animation: portrait-drive 500ms ease infinite alternate; }
 [data-effect="egg"] .machine-brand { animation: brand-flash 350ms ease 4; }
@@ -156,6 +166,16 @@ canvas { display: block; outline: none; }
 @keyframes wipe { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes tool-change { 50% { transform: translateY(-18%); } }
 @keyframes brand-flash { 50% { filter: brightness(1.5); } }
+@keyframes event-gauge { 35% { transform: rotate(100deg); } 70% { transform: rotate(-15deg); } }
+@keyframes event-conveyor { 50% { transform: translateX(5px); } }
+@keyframes event-wiper { 50% { transform: translateX(5px) rotate(8deg); } }
+@keyframes event-stamp { 35% { transform: translateY(4px) scale(.72); } 65% { transform: translateY(-2px) scale(1.08); } }
+@keyframes event-tool { 50% { transform: rotate(70deg); } }
+@keyframes event-shield { 45% { transform: scale(1.2); filter: drop-shadow(0 0 8px #91f700); } }
+@keyframes event-drive { to { transform: rotate(360deg); } }
+@keyframes event-egg { 30% { transform: translateY(-5px) rotate(-12deg); } 65% { transform: translateY(1px) rotate(12deg); } }
+@keyframes stamp-impact { 18% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1.1); } 30% { transform: translate(-50%, -50%) rotate(-12deg) scale(.95); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(.95); } }
+@keyframes shield-seal { 15%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.92); } }
 @media (min-width: 1600px) and (min-height: 900px) {
     .machine-brand { height: 64px; }
     .readouts { font-size: 21px; }
