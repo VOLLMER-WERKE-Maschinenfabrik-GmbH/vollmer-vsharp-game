@@ -293,6 +293,14 @@ public sealed class GameEngine
                 request.Gesture.Points,
                 _options.ContactToleranceNormalized);
             var resolvedTool = contact is null ? null : _tools[contact.ToolId];
+            if (_mode == GameMode.Saw && resolvedTool is not null)
+            {
+                var shaftContact = HitZoneClassifier.FindFirstContact(
+                    [resolvedTool], request.Gesture.Points, 0, HitZoneRole.Shaft);
+                contact = shaftContact ?? HitZoneClassifier.FindFirstContact(
+                    [resolvedTool], request.Gesture.Points, _options.ContactToleranceNormalized, HitZoneRole.Cut) ?? contact;
+            }
+
             var outcome = ClassifyOutcome(request.Gesture, contact, resolvedTool);
             var scoreDelta = GetScoreDelta(outcome);
             _score = checked(_score + scoreDelta);
@@ -640,12 +648,12 @@ public sealed class GameEngine
             return Outcome.WrongSharpening;
         }
 
-        var pathLength = GetPathLength(gesture.Points, tool.Placement?.RotationDegrees ?? 0);
-        var requiredLength = _options.MinStrokeLengthNormalized
-            * Math.Max(tool.Definition.BoundingWidthNormalized, tool.Definition.BoundingHeightNormalized);
-        var directionDifference = GetDirectionDifference(gesture.Points, tool.Definition.CutDirectionDegrees + (tool.Placement?.RotationDegrees ?? 0));
-        return pathLength + GeometryEpsilon >= requiredLength
-            && directionDifference <= _options.MaxAngleDeviationDeg + GeometryEpsilon
+        var toolTargets = new[] { tool };
+        var startsOutside = HitZoneClassifier.FindFirstContact(toolTargets, [gesture.Points[0]], 0) is null;
+        var endsOutside = HitZoneClassifier.FindFirstContact(toolTargets, [gesture.Points[^1]], 0) is null;
+        var touchesCut = HitZoneClassifier.FindFirstContact(
+            toolTargets, gesture.Points, _options.ContactToleranceNormalized, HitZoneRole.Cut) is not null;
+        return startsOutside && endsOutside && touchesCut
             ? Outcome.Success
             : Outcome.WrongSharpening;
     }
@@ -673,40 +681,6 @@ public sealed class GameEngine
             (GameMode.Saw, false) => "saw_fail",
             _ => throw new ArgumentOutOfRangeException(nameof(outcome))
         };
-    }
-
-    private static double GetPathLength(IReadOnlyList<Point2> points, double rotationDegrees)
-    {
-        var totalLength = 0d;
-        var angle = rotationDegrees * Math.PI / 180;
-        var cosine = Math.Cos(angle);
-        var sine = Math.Sin(angle);
-        for (var index = 1; index < points.Count; index++)
-        {
-            var horizontal = points[index].X - points[index - 1].X;
-            var vertical = (points[index].Y - points[index - 1].Y) / ToolGeometry.CanvasAspectRatio;
-            var localHorizontal = horizontal * cosine + vertical * sine;
-            var localVertical = (-horizontal * sine + vertical * cosine) * ToolGeometry.CanvasAspectRatio;
-            totalLength += Math.Sqrt(localHorizontal * localHorizontal + localVertical * localVertical);
-        }
-
-        return totalLength;
-    }
-
-    private static double GetDirectionDifference(IReadOnlyList<Point2> points, double cutDirectionDegrees)
-    {
-        var start = points[0];
-        var end = points[^1];
-        var deltaX = end.X - start.X;
-        var deltaY = end.Y - start.Y;
-        if (Math.Abs(deltaX) <= GeometryEpsilon && Math.Abs(deltaY) <= GeometryEpsilon)
-        {
-            return 180;
-        }
-
-        var directionDegrees = Math.Atan2(deltaY / ToolGeometry.CanvasAspectRatio, deltaX) * 180 / Math.PI;
-        var difference = Math.Abs((directionDegrees - cutDirectionDegrees) % 360);
-        return difference > 180 ? 360 - difference : difference;
     }
 
     private static void ValidateToolDefinition(ToolDefinition definition)

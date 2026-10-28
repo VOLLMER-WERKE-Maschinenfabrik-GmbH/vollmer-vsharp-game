@@ -121,15 +121,17 @@ public sealed class DemoGameService(GameEngine realGame, GameplayOptions options
                 var point = FindPoint(snapshot.Tools, tool, role);
                 if (point is null) continue;
                 if (kind == GestureKind.Tap) points = [point];
+                else if (role == HitZoneRole.Cut)
+                {
+                    points = FindSawSwipe(tool);
+                    if (points is null) continue;
+                }
                 else
                 {
-                    var angle = (tool.Definition.CutDirectionDegrees + tool.Placement!.RotationDegrees) * Math.PI / 180;
-                    var length = Math.Max(tool.Definition.BoundingWidthNormalized, tool.Definition.BoundingHeightNormalized)
-                        * (_options.MinStrokeLengthNormalized + 0.15);
-                    var end = new Point2(point.X + Math.Cos(angle) * length,
-                        point.Y + Math.Sin(angle) * length * ToolGeometry.CanvasAspectRatio);
-                    if (end.X is < 0 or > 1 || end.Y is < 0 or > 1) continue;
-                    points = [point, end];
+                    points = [
+                        TransformToolPoint(new Point2(0, 0.5), tool),
+                        TransformToolPoint(new Point2(1, 0.5), tool)
+                    ];
                 }
                 toolId = tool.Definition.ToolId;
                 break;
@@ -160,5 +162,59 @@ public sealed class DemoGameService(GameEngine realGame, GameplayOptions options
             }
         }
         return null;
+    }
+
+    private Point2[]? FindSawSwipe(ToolSnapshot tool)
+    {
+        var placement = tool.Placement!;
+        var toolTargets = new[] { tool };
+        var maximumDimension = Math.Max(tool.Definition.BoundingWidthNormalized, tool.Definition.BoundingHeightNormalized);
+        var halfLength = maximumDimension * 0.75;
+        for (var angleStep = 0; angleStep < 12; angleStep++)
+        {
+            var angle = angleStep * Math.PI / 12;
+            var directionX = Math.Cos(angle);
+            var directionY = Math.Sin(angle);
+            var normalX = -directionY;
+            var normalY = directionX;
+            for (var offsetStep = -9; offsetStep <= 9; offsetStep++)
+            {
+                var offset = maximumDimension * offsetStep / 20;
+                var start = TransformToolPoint(new Point2(
+                    0.5 + (normalX * offset - directionX * halfLength) / tool.Definition.BoundingWidthNormalized,
+                    0.5 + (normalY * offset - directionY * halfLength) / tool.Definition.BoundingHeightNormalized), tool);
+                var end = TransformToolPoint(new Point2(
+                    0.5 + (normalX * offset + directionX * halfLength) / tool.Definition.BoundingWidthNormalized,
+                    0.5 + (normalY * offset + directionY * halfLength) / tool.Definition.BoundingHeightNormalized), tool);
+                if (start.X is < 0 or > 1 || start.Y is < 0 or > 1 || end.X is < 0 or > 1 || end.Y is < 0 or > 1)
+                {
+                    continue;
+                }
+
+                var path = new[] { start, end };
+                if (HitZoneClassifier.FindFirstContact(toolTargets, [start], 0) is not null
+                    || HitZoneClassifier.FindFirstContact(toolTargets, [end], 0) is not null
+                    || HitZoneClassifier.FindFirstContact(toolTargets, path, 0, HitZoneRole.Shaft) is not null
+                    || HitZoneClassifier.FindFirstContact(toolTargets, path, _options.ContactToleranceNormalized, HitZoneRole.Cut) is null)
+                {
+                    continue;
+                }
+
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private static Point2 TransformToolPoint(Point2 point, ToolSnapshot tool)
+    {
+        var placement = tool.Placement!;
+        var angle = placement.RotationDegrees * Math.PI / 180;
+        var localX = (point.X - 0.5) * tool.Definition.BoundingWidthNormalized;
+        var localY = (point.Y - 0.5) * tool.Definition.BoundingHeightNormalized / ToolGeometry.CanvasAspectRatio;
+        return new Point2(
+            placement.Center.X + localX * Math.Cos(angle) - localY * Math.Sin(angle),
+            placement.Center.Y + (localX * Math.Sin(angle) + localY * Math.Cos(angle)) * ToolGeometry.CanvasAspectRatio);
     }
 }

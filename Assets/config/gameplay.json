@@ -6,8 +6,6 @@
   "shaftHitPenalty": -10,
   "missPenalty": -5,
   "contactToleranceNormalized": 0.02,
-  "maxAngleDeviationDeg": 35,
-  "minStrokeLengthNormalized": 0.18,
   "failedDespawnMs": 600,
   "sharpDespawnMs": 1800,
   "maxConcurrentTargets": 6,

@@ -116,25 +116,22 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
-    [DataRow(45, false, Outcome.Success, 0.0288)]
-    [DataRow(90, false, Outcome.Success, 0.035)]
-    [DataRow(270, false, Outcome.Success, 0.035)]
-    [DataRow(90, true, Outcome.WrongSharpening, 0.035)]
-    [DataRow(90, false, Outcome.WrongSharpening, 0.025)]
-    [DataRow(0, false, Outcome.WrongSharpening, 0.025)]
-    public void Rotation_SawSwipeFollowsVisibleCutDirection(double degrees, bool reverse, Outcome expected, double length)
+    [DataRow(0, false)]
+    [DataRow(90, false)]
+    [DataRow(90, true)]
+    [DataRow(270, false)]
+    public void Rotation_SawSwipeSucceedsWhenGrazingCutFromOutsideInEitherDirection(double degrees, bool reverse)
     {
-        // Prüft Swipes entlang gedrehter Schneiden, falsche Gegenrichtung und winkelunabhängige Mindestlänge.
+        // Prüft kurze Streifzüge an gedrehten Scheiben in beiden Wischrichtungen.
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var engine = CreateSawEngine(time);
         var definition = CreateSmallTool("tool-1");
         Assert.IsTrue(engine.RegisterTool(definition, new(new(0.5, 0.6), 0, 0, degrees)));
-        var angle = degrees * Math.PI / 180;
-        var points = new[] { 0.005, 0.005 + length }.Select(distance => new Point2(0.5 + distance * Math.Cos(angle),
-            0.6 + distance * Math.Sin(angle) * ToolGeometry.CanvasAspectRatio)).ToArray();
+        var points = new[] { new Point2(0.65, 0.1), new Point2(0.65, 0.15) }
+            .Select(point => TransformToolPoint(point, new(0.5, 0.6), 0.16, 0.14, degrees)).ToArray();
         if (reverse) Array.Reverse(points);
         var result = engine.ResolveAction(CreateSwipeRequest("player", engine.GetSnapshot().RoundId!.Value, 1, points, time.GetUtcNow()));
-        Assert.AreEqual(expected, result.Resolution!.Outcome);
+        Assert.AreEqual(Outcome.Success, result.Resolution!.Outcome);
     }
 
     [TestMethod]
@@ -446,7 +443,7 @@ public sealed class GameEngineTests
     [TestMethod]
     public void ResolveAction_SawSwipe_ValidDirectionAndLengthSucceeds()
     {
-        // Prüft Richtung und Mindeststrecke relativ zur längsten Werkzeugkante im Säge-Modus.
+        // Prüft, dass ein kurzer Streifzug mit außerhalb liegenden Endpunkten zum Erfolg reicht.
         var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var engine = CreateEngine(timeProvider);
         JoinPlayer(engine);
@@ -457,7 +454,7 @@ public sealed class GameEngineTests
             "player",
             engine.GetSnapshot().RoundId!.Value,
             1,
-            [new Point2(0.55, 0.5), new Point2(0.85, 0.5)],
+            [new Point2(0.55, 0.19), new Point2(0.65, 0.19)],
             timeProvider.GetUtcNow());
 
         var result = engine.ResolveAction(request);
@@ -649,9 +646,9 @@ public sealed class GameEngineTests
     }
 
     [TestMethod]
-    public void ResolveAction_SawSwipe_WrongDirectionOrShortStrokeFails()
+    public void ResolveAction_SawSwipe_IgnoresConfiguredDirectionAndStrokeLength()
     {
-        // Prüft Winkel- und Mindeststreckenfehler im Säge-Modus.
+        // Prüft, dass Gegenrichtung und kurze Strecke keinen gültigen Schneidenstreifzug ablehnen.
         var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var wrongDirectionEngine = CreateSawEngine(timeProvider);
         Assert.IsTrue(wrongDirectionEngine.RegisterTool(CreateTool("tool-1", 90)));
@@ -659,20 +656,48 @@ public sealed class GameEngineTests
             "player",
             wrongDirectionEngine.GetSnapshot().RoundId!.Value,
             1,
-            [new Point2(0.55, 0.5), new Point2(0.85, 0.5)],
+            [new Point2(0.55, 0.19), new Point2(0.65, 0.19)],
             timeProvider.GetUtcNow());
-        Assert.AreEqual(Outcome.WrongSharpening, wrongDirectionEngine.ResolveAction(wrongDirectionRequest).Resolution!.Outcome);
+        Assert.AreEqual(Outcome.Success, wrongDirectionEngine.ResolveAction(wrongDirectionRequest).Resolution!.Outcome);
 
-        var shortStrokeEngine = CreateSawEngine(timeProvider);
-        Assert.IsTrue(shortStrokeEngine.RegisterTool(CreateTool("tool-1")));
-        var shortStrokeRequest = CreateSwipeRequest(
+        var reverseEngine = CreateSawEngine(timeProvider);
+        Assert.IsTrue(reverseEngine.RegisterTool(CreateTool("tool-1")));
+        var reverseRequest = CreateSwipeRequest(
             "player",
-            shortStrokeEngine.GetSnapshot().RoundId!.Value,
+            reverseEngine.GetSnapshot().RoundId!.Value,
             1,
-            [new Point2(0.55, 0.5), new Point2(0.57, 0.5)],
+            [new Point2(0.65, 0.19), new Point2(0.55, 0.19)],
             timeProvider.GetUtcNow());
 
-        Assert.AreEqual(Outcome.WrongSharpening, shortStrokeEngine.ResolveAction(shortStrokeRequest).Resolution!.Outcome);
+        Assert.AreEqual(Outcome.Success, reverseEngine.ResolveAction(reverseRequest).Resolution!.Outcome);
+    }
+
+    [TestMethod]
+    public void ResolveAction_SawSwipe_RequiresOutsideEndpointsAndFailsOnShaftContact()
+    {
+        // Prüft Außenstart/-ende und dass ein tiefer Treffer nach dem Schneidenkontakt das Werkzeug zerstört.
+        var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var insideStartEngine = CreateSawEngine(timeProvider);
+        Assert.IsTrue(insideStartEngine.RegisterTool(CreateTool("tool-1")));
+        var insideStartRequest = CreateSwipeRequest("player", insideStartEngine.GetSnapshot().RoundId!.Value, 1,
+            [new Point2(0.55, 0.5), new Point2(0.85, 0.5)], timeProvider.GetUtcNow());
+        Assert.AreEqual(Outcome.WrongSharpening, insideStartEngine.ResolveAction(insideStartRequest).Resolution!.Outcome);
+
+        var insideEndEngine = CreateSawEngine(timeProvider);
+        Assert.IsTrue(insideEndEngine.RegisterTool(CreateTool("tool-1")));
+        var insideEndRequest = CreateSwipeRequest("player", insideEndEngine.GetSnapshot().RoundId!.Value, 1,
+            [new Point2(0.15, 0.5), new Point2(0.55, 0.5)], timeProvider.GetUtcNow());
+        Assert.AreEqual(Outcome.WrongSharpening, insideEndEngine.ResolveAction(insideEndRequest).Resolution!.Outcome);
+
+        var shaftEngine = CreateSawEngine(timeProvider);
+        Assert.IsTrue(shaftEngine.RegisterTool(CreateTool("tool-1")));
+        var shaftRequest = CreateSwipeRequest("player", shaftEngine.GetSnapshot().RoundId!.Value, 1,
+            [new Point2(0.85, 0.5), new Point2(0.15, 0.5)], timeProvider.GetUtcNow());
+        var shaftResult = shaftEngine.ResolveAction(shaftRequest);
+
+        Assert.AreEqual(Outcome.WrongSharpening, shaftResult.Resolution!.Outcome);
+        Assert.AreEqual(ToolState.Failed, shaftResult.Resolution.ToolState);
+        Assert.AreEqual(HitZoneRole.Shaft, shaftResult.Resolution.HitZone!.Role);
     }
 
     [TestMethod]
@@ -846,6 +871,16 @@ public sealed class GameEngineTests
             new Point2(right, bottom),
             new Point2(left, bottom)
         ]);
+    }
+
+    private static Point2 TransformToolPoint(Point2 point, Point2 center, double width, double height, double rotationDegrees)
+    {
+        var angle = rotationDegrees * Math.PI / 180;
+        var localX = (point.X - 0.5) * width;
+        var localY = (point.Y - 0.5) * height / ToolGeometry.CanvasAspectRatio;
+        return new Point2(
+            center.X + localX * Math.Cos(angle) - localY * Math.Sin(angle),
+            center.Y + (localX * Math.Sin(angle) + localY * Math.Cos(angle)) * ToolGeometry.CanvasAspectRatio);
     }
 
     private static ActionRequested CreateTapRequest(string clientId, Guid roundId, long sequence, Point2 point, DateTimeOffset inputTimestamp)

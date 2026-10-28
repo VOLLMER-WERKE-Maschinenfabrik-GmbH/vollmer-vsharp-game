@@ -9,7 +9,8 @@ public static class HitZoneClassifier
     public static ZoneContact? FindFirstContact(
         IReadOnlyList<ToolSnapshot> tools,
         IReadOnlyList<Point2> path,
-        double toleranceNormalized)
+        double toleranceNormalized,
+        HitZoneRole? role = null)
     {
         if (path.Count == 0 || !double.IsFinite(toleranceNormalized) || toleranceNormalized < 0)
         {
@@ -18,7 +19,7 @@ public static class HitZoneClassifier
 
         if (toleranceNormalized > 0)
         {
-            var directContact = FindFirstContact(tools, [path[0]], 0);
+            var directContact = FindFirstContact(tools, [path[0]], 0, role);
             if (directContact is not null) return directContact;
         }
 
@@ -32,6 +33,11 @@ public static class HitZoneClassifier
 
             foreach (var hitZone in tool.Definition.HitZones)
             {
+                if (role is not null && hitZone.Role != role.Value)
+                {
+                    continue;
+                }
+
                 var transformedPoints = TransformZone(hitZone.Points, tool);
                 if (!TryGetPathContact(path, transformedPoints, toleranceNormalized, out var pathProgress))
                 {

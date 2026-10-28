@@ -9,8 +9,6 @@ public sealed record GameplayOptions
     public int ShaftHitPenalty { get; init; } = -10;
     public int MissPenalty { get; init; } = -5;
     public double ContactToleranceNormalized { get; init; } = 0.02;
-    public double MaxAngleDeviationDeg { get; init; } = 35;
-    public double MinStrokeLengthNormalized { get; init; } = 0.18;
     public int FailedDespawnMs { get; init; } = 600;
     public int SharpDespawnMs { get; init; } = 1800;
     public int MaxConcurrentTargets { get; init; } = 6;
@@ -45,16 +43,6 @@ public sealed record GameplayOptions
         if (!double.IsFinite(ContactToleranceNormalized) || ContactToleranceNormalized is < 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(ContactToleranceNormalized));
-        }
-
-        if (!double.IsFinite(MaxAngleDeviationDeg) || MaxAngleDeviationDeg is < 0 or > 180)
-        {
-            throw new ArgumentOutOfRangeException(nameof(MaxAngleDeviationDeg));
-        }
-
-        if (!double.IsFinite(MinStrokeLengthNormalized) || MinStrokeLengthNormalized is < 0 or > 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(MinStrokeLengthNormalized));
         }
 
         if (FailedDespawnMs <= 0)

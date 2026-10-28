@@ -34,8 +34,7 @@ public sealed class GameplayOptionsTests
     {
         // Prüft negative sowie nicht normalisierte Gestentoleranzen.
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new GameplayOptions { ContactToleranceNormalized = -0.01 }.Validate());
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new GameplayOptions { MinStrokeLengthNormalized = 1.01 }.Validate());
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new GameplayOptions { MaxAngleDeviationDeg = 181 }.Validate());
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new GameplayOptions { ContactToleranceNormalized = 1.01 }.Validate());
     }
 
     [TestMethod]
