@@ -63,7 +63,7 @@ public sealed class ZoneEditorTests
         Assert.AreEqual(0.5, roundTrip.Zones.Pivot.X);
         using var stale = await client.PostAsJsonAsync("/tools/zones/api/asset/tool_0001", fixture.Zones, TestContext.CancellationToken);
         Assert.AreEqual(HttpStatusCode.Conflict, stale.StatusCode);
-        using var preview = await client.GetAsync("/tools/zones/api/preview?assetId=tool_0001&mode=swipe&x=0.55&y=0.5&endX=0.75&endY=0.5", TestContext.CancellationToken);
+        using var preview = await client.GetAsync("/tools/zones/api/preview?assetId=tool_0001&mode=swipe&x=0.65&y=0.2&endX=0.65&endY=0.8", TestContext.CancellationToken);
         Assert.AreEqual(HttpStatusCode.OK, preview.StatusCode);
         using var previewJson = JsonDocument.Parse(await preview.Content.ReadAsStringAsync(TestContext.CancellationToken));
         Assert.AreEqual("success", previewJson.RootElement.GetProperty("outcome").GetString());

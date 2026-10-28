@@ -20,6 +20,10 @@ public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOri
 
     public async Task<JoinResponse> JoinGame(JoinRequest request)
     {
+        if (GetJoinedClientId() is not null)
+        {
+            throw new HubException("Diese Verbindung ist dem Spiel bereits beigetreten.");
+        }
         var isLocalClient = clientOriginPolicy.IsLocal(Context.GetHttpContext());
         var response = gameEngine.JoinClient(request, isLocalClient);
         Context.Items[ClientInstanceContextKey] = response.ClientInstanceId;

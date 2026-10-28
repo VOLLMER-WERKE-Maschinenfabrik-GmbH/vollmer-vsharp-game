@@ -26,8 +26,10 @@ public sealed class ZoneEditorService(string assetsDirectory, string sourceDirec
     {
         using var bitmap = OpenBitmap(assetId);
         var filename = ZoneFile(assetId);
+        var content = File.Exists(filename) ? File.ReadAllBytes(filename) : null;
+        var version = content is null ? "new" : Convert.ToHexStringLower(SHA256.HashData(content));
         AssetZoneAuthoring zones;
-        if (File.Exists(filename)) zones = JsonSerializer.Deserialize<AssetZoneAuthoring>(File.ReadAllText(filename), ManifestInputs.JsonOptions)
+        if (content is not null) zones = JsonSerializer.Deserialize<AssetZoneAuthoring>(content, ManifestInputs.JsonOptions)
             ?? throw new ArgumentException("Die Zonendatei ist leer.");
         else
         {
@@ -37,7 +39,7 @@ public sealed class ZoneEditorService(string assetsDirectory, string sourceDirec
                     Points = zone.Points.Select(point => new[] { point.X, point.Y }).ToArray() }).ToArray()
                     ?? [new() { ZoneId = "cut", Role = "cut", Points = [] }, new() { ZoneId = "shaft", Role = "shaft", Points = [] }] };
         }
-        return new(assetId, "tool-image", bitmap.Width, bitmap.Height, "/Assets/images/tools/" + Path.GetFileName(ImageFile(assetId)), zones, Version(filename));
+        return new(assetId, "tool-image", bitmap.Width, bitmap.Height, "/Assets/images/tools/" + Path.GetFileName(ImageFile(assetId)), zones, version);
     }
 
     public AssetZoneAuthoring Validate(string assetId, JsonElement document)

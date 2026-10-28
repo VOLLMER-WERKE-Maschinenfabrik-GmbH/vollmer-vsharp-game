@@ -25,7 +25,7 @@ try {
         & $publishedExecutable
     }
     else {
-        dotnet run --project "src/VGame.Server/VGame.Server.csproj" --launch-profile http --no-restore
+        dotnet run --project "src/VGame.Server/VGame.Server.csproj" --launch-profile http
     }
 
     if ($LASTEXITCODE -ne 0) {
