@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VGame.Contracts\VGame.Contracts.csproj" />
+    <ProjectReference Include="..\VGame.Domain\VGame.Domain.csproj" />
+    <ProjectReference Include="..\VGame.Shell\VGame.Shell.csproj" />
+    <ProjectReference Include="..\..\tools\VGame.Tools.Manifest\VGame.Tools.Manifest.csproj" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\Assets\**\*" Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Content Update="wwwroot/client/dist/zones.html;wwwroot/client/dist/assets/zones-*" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+</Project>

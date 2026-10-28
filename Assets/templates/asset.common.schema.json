@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["assetId", "category", "licenseStatus", "source", "createdUtc"],
+  "properties": {
+    "assetId": { "type": "string", "pattern": "^[a-z]+_[0-9]{4}$" },
+    "category": { "type": "string", "minLength": 1 },
+    "licenseStatus": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "createdUtc": { "type": "string", "format": "date-time" },
+    "model": { "type": "string", "minLength": 1 },
+    "seed": { "type": "integer", "minimum": 0 },
+    "prompt": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [{ "if": { "properties": { "source": { "const": "leonardo-ai" } } }, "then": { "required": ["model", "seed", "prompt"] } }]
+}

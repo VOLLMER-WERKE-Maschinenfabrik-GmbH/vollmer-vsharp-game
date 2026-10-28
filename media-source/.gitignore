@@ -1,0 +1,15 @@
+# Autorenquellen und Aufbereitungscode werden versioniert; Rohbilder und Master bleiben ausgeschlossen.
+!/.gitignore
+!/prepare-artwork.mjs
+!/prepare-faces.mjs
+!/assets/
+!/plan/
+!/zone-authoring/
+/assets/*
+!/assets/*.meta.json
+!/assets/README.md
+/plan/*
+!/plan/delivery-list.csv
+/zone-authoring/*
+!/zone-authoring/*.zones.json
+!/zone-authoring/.gitkeep

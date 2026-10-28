@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [{ "$ref": "asset.common.schema.json" }],
+  "type": "object",
+  "required": ["stageArea", "layer", "parallaxFactor", "palette", "lightProfile"],
+  "properties": {
+    "assetId": { "pattern": "^bg_[0-9]{4}$" }, "category": { "const": "showroom-stage" },
+    "layer": { "const": "backdrop" }, "parallaxFactor": { "const": 0 },
+    "stageArea": {
+      "type": "object", "required": ["x", "y", "w", "h"], "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 1 }, "y": { "type": "number", "minimum": 0, "maximum": 1 },
+        "w": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }, "h": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "palette": { "type": "object", "required": ["floor", "wall"], "properties": { "floor": { "type": "string", "minLength": 1 }, "wall": { "type": "string", "minLength": 1 } } },
+    "lightProfile": { "type": "string", "minLength": 1 }
+  },
+  "x-imageNorm": { "directory": "images/background", "formats": ["webp"], "width": 2560, "height": 1440, "transparent": false },
+  "x-stageRules": { "minimumArea": 0.55, "withinCanvas": true }
+}

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "roundDurationSeconds": 60,
+  "correctScore": 10,
+  "wrongSharpeningPenalty": -5,
+  "shaftHitPenalty": -10,
+  "missPenalty": -5,
+  "contactToleranceNormalized": 0.02,
+  "failedDespawnMs": 600,
+  "sharpDespawnMs": 1800,
+  "minimumConcurrentTargets": 4,
+  "maxStageCoverage": 0.45,
+  "minTargetSpacingFactor": 1.25,
+  "stageAreaX": 0,
+  "stageAreaY": 0,
+  "stageAreaWidth": 1,
+  "stageAreaHeight": 1,
+  "workshopEvents": {
+    "enabled": true,
+    "surpriseUnlockAfterDistinctEvents": 3,
+    "events": {
+      "gauge": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "conveyor": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "wiper": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "stamp": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "tool": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "shield": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "drive": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 },
+      "egg": { "enabled": true, "durationMilliseconds": 1400, "cooldownMilliseconds": 3000 }
+    }
+  }
+}

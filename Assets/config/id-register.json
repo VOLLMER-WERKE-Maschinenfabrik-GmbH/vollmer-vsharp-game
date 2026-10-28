@@ -1,0 +1,190 @@
+{
+  "entries": [
+    {
+      "assetId": "bg_0001",
+      "category": "showroom-stage",
+      "status": "reserved"
+    },
+    {
+      "assetId": "cast_0001",
+      "category": "showroom-cast",
+      "status": "reserved"
+    },
+    {
+      "assetId": "cast_0002",
+      "category": "showroom-cast",
+      "status": "reserved"
+    },
+    {
+      "assetId": "cast_0003",
+      "category": "showroom-cast",
+      "status": "reserved"
+    },
+    {
+      "assetId": "cast_0004",
+      "category": "showroom-cast",
+      "status": "reserved"
+    },
+    {
+      "assetId": "fx_0001",
+      "category": "laser-effect",
+      "status": "reserved"
+    },
+    {
+      "assetId": "fx_0002",
+      "category": "grind-effect",
+      "status": "reserved"
+    },
+    {
+      "assetId": "occ_0001",
+      "category": "foreground-occluder",
+      "status": "reserved"
+    },
+    {
+      "assetId": "occ_0002",
+      "category": "foreground-occluder",
+      "status": "reserved"
+    },
+    {
+      "assetId": "occ_0003",
+      "category": "foreground-occluder",
+      "status": "reserved"
+    },
+    {
+      "assetId": "occ_0004",
+      "category": "foreground-occluder",
+      "status": "reserved"
+    },
+    {
+      "assetId": "occ_0005",
+      "category": "foreground-occluder",
+      "status": "reserved"
+    },
+    {
+      "assetId": "occ_0006",
+      "category": "foreground-occluder",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0001",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0002",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0003",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0004",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0005",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0006",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0007",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0008",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0009",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0010",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0011",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "ovl_0012",
+      "category": "tool-overlay",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0001",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0002",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0003",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0004",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0005",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0006",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0007",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0008",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0009",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0010",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0011",
+      "category": "tool-image",
+      "status": "reserved"
+    },
+    {
+      "assetId": "tool_0012",
+      "category": "tool-image",
+      "status": "reserved"
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [{ "$ref": "asset.common.schema.json" }],
+  "type": "object", "required": ["sprite", "layer", "motionPath", "speedProfile", "cooldownMs", "enabled"],
+  "properties": {
+    "assetId": { "pattern": "^cast_[0-9]{4}$" }, "category": { "const": "showroom-cast" }, "layer": { "const": "props" },
+    "sprite": { "type": "string", "minLength": 1 }, "motionPath": { "type": "string", "minLength": 1 },
+    "speedProfile": { "type": "string", "minLength": 1 }, "cooldownMs": { "type": "integer", "minimum": 0 }, "enabled": { "type": "boolean" }
+  },
+  "x-imageNorm": { "directory": "images/background", "formats": ["png", "webp"], "minimumLongestEdge": 800, "transparent": true }
+}

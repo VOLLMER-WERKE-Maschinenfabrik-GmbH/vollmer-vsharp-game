@@ -2,14 +2,14 @@
 | | |
 |-|-|
 | **Konzept:** | [Vollmer Messe-Game: Asset- und Bildlieferung](00002-c-vollmer-assetlieferung.concept.md) |
-| **Letzte Änderung:** | 2026-09-28 |
+| **Letzte Änderung:** | 2026-10-13 |
 
 Arbeitspakete aus Kap. 5 des Konzepts. Diese Tabelle ist die verbindliche Arbeitsliste für die Umsetzung.
 Status: `⬜ offen` / `🔄 in Arbeit` / `✅ erledigt` / `⛔ blockiert`
 
 | AP | Beschreibung | Status | Erledigt am | Nachweis / Nächster Schritt |
 |-|-|-|-|-|
-| AP-01 | Ablage, Vorlagen und ID-Register anlegen. | ⬜ offen | | Nächster Schritt: Repo-Struktur aus Kap. 3.3, `media-source/`, `Assets/templates/` und `id-register.json` anlegen. |
+| AP-01 | Ablage, Vorlagen und ID-Register anlegen. | ✅ erledigt | 2026-10-13 | Authoring-Ablage und Lieferliste mit 37 IDs angelegt; sieben Kategorievorlagen plus gemeinsames Herkunftsschema und Bootstrap-ID-Register vorhanden. Alle Start-IDs sind reserviert, kein fehlendes Asset wird als geliefert ausgewiesen. 15 MSTests mit Filter `FullyQualifiedName~ManifestContractTests.Authoring_` bestanden, 0 fehlgeschlagen/übersprungen; Build ausgeführt. Bestehende Laufzeitbilder und Prototypkatalog unverändert. Generierte Manifestdateien und eigentliche Autorenwerkzeuge folgen in 00003. |
 | AP-02 | Bühne, Requisiten und Verdecker produzieren. | ⬜ offen | | Nach AP-01: `bg_0001`, `cast_0001`–`cast_0004`, `occ_0001`–`occ_0006` normiert in `Assets/` ablegen. |
 | AP-03 | Zwölf Werkzeugbilder produzieren. | ⬜ offen | | Nach AP-01: `tool_0001`–`tool_0012` nach Kap. 3.4.1 erzeugen, freistellen und normieren. |
 | AP-04 | Zwölf Zustands-Overlays produzieren. | ⬜ offen | | Nach AP-03: `ovl_0001`–`ovl_0012` aus den Werkzeugformen ableiten und Deckung prüfen. |
@@ -33,9 +33,10 @@ Unverändert aus Kap. 5 des Konzepts; die obere Tabelle hält ausschließlich Be
 
 ## Konzeptstand und Wiedereinstieg
 
+- 2026-10-13: AP-01 umgesetzt. Bestehende Laufzeit-/Rohbildablage beibehalten; `media-source/assets/` dokumentiert, `media-source/plan/delivery-list.csv` mit 37 geplanten IDs angelegt. Sieben Kategorievorlagen plus gemeinsames Herkunftsschema in `Assets/templates/`; `Assets/config/id-register.json` als Bootstrap-Register mit ausschließlich reservierten IDs angelegt. Die Reservierung ist weder Lieferung noch Bild-/Lizenzfreigabe. Modell, Seed und Prompt wurden nicht erfunden. 15 fokussierte Authoring-MSTests bestanden; später im gemeinsamen Vertragslauf aus 00003 insgesamt 25 Tests grün, Build jeweils ausgeführt. Die Originalbilder, Laufzeitbilder und `artwork.prototype.json` bleiben unverändert. JSON-Schema prüft Metadaten; die `x-*`-Bildnorm-/Flächenregeln werden erst im Manifest-Validator aus 00003 umgesetzt. AP-02 bis AP-07 bleiben offen; keine Produktionsmetadaten oder generierten Manifestdateien vorgetäuscht.
 - 2026-09-28: Asset- und Bildlieferkonzept erstellt: 37 Assets mit IDs und Mengen (Kap. 3.4), Zustandsmodell `dull`/`in_progress`/`sharp`/`failed` (Kap. 3.5), Tiefenverfahren mit Profilwerten (Kap. 3.6), Repo- und Solution-Struktur (Kap. 3.3), Produktionsablauf mit Affinity-Normierung (Kap. 3.7), Autorendateien (Kap. 4) und sieben Arbeitspakete. Kein Arbeitspaket abgeschlossen, keine Produktion begonnen. Dokumentprüfung: `git diff --check` ohne Befund, Editor-Diagnostik ohne Fehler.
 - Zusätzlich erforderlich im Hauptkonzept 00001: Zustandsregeln für `failed` in Kap. 3.3/3.3.1, Verweis der Bildlieferliste auf dieses Konzept, Anpassung von B-02 sowie der offenen Punkte OP-07 bis OP-09.
-- Exakter nächster Umsetzungsschritt: AP-01 auf `🔄 in Arbeit` setzen und die Ablage nach Kap. 3.3 anlegen; anschließend AP-02 (Bühne und Requisiten) und AP-03 (Werkzeugbilder).
+- Exakter nächster Umsetzungsschritt für die Bildlieferung: AP-02 (Bühne und Requisiten) und danach AP-03 (Werkzeugbilder) anhand der Lieferliste bereitstellen und normieren. Die benötigte Autoren-Werkzeugkette wird zuvor in 00003 AP-02 weitergeführt; vollständige Produktionsbilder und tatsächliche Herkunftsdaten fehlen weiterhin. AP-02 bis AP-07 wurden hier nicht begonnen.
 
 Regeln:
 - Vor der Bearbeitung das aktuelle Arbeitspaket auf `🔄 in Arbeit` setzen; gleichzeitig darf höchstens ein Arbeitspaket in Arbeit sein.

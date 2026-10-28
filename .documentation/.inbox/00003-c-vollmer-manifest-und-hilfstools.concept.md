@@ -3,7 +3,7 @@
 | | | |
 |-|-|-|
 | **Erstelldatum:** | 2026-09-28 |
-| **Letzte Änderung:** | 2026-09-28 |
+| **Letzte Änderung:** | 2026-10-11 |
 | **Issue:** | 00003 |
 
 ## Commit-Vorschlag für den finalen Gesamt-Commit
@@ -74,7 +74,7 @@ Auslöser ist die Rückmeldung zum Hauptkonzept [00001](00001-c-vollmer-messe-ga
 |-|-|-|
 | Datei, Pfad, Format, Pixelmaße, Dateigröße, Prüfsumme | ableitbar aus dem Dateisystem | entfällt vollständig |
 | ID, Kategorie | ableitbar aus Ordner, Dateiname und ID-Register | entfällt vollständig |
-| Audiopool-Zuordnung (`laser_success` usw.) | ableitbar aus `<aktion>_<nn>.<format>` im Audioordner | entfällt vollständig |
+| Audio-Dateigruppen (`cheer_high`, `laser` usw.) und ihre Poolzuordnung | Dateigruppen ableitbar aus `<aktion>_<nn>.<format>` im Audioordner; Poolzuordnung authored in `audio.pools.json` | klein, eine Zeile je Pool |
 | Trefferzonen `cut`/`shaft`, Pivot | authored, per Maus gesetzt | klein, aber präzise — dafür ein Editor |
 | `toolType`, `interaction`, `sizeClass`, `pkd`, `states[]` | authored, wenige Werte je Asset | klein, per Wizard |
 | `licenseStatus`, Quelle, Generator, Modell, Seed, Prompt | authored beziehungsweise aus dem Wizard | klein, einmalig |
@@ -108,25 +108,25 @@ Auslöser ist die Rückmeldung zum Hauptkonzept [00001](00001-c-vollmer-messe-ga
 | `Assets/config/manifest.md` | generiert | Werkzeugkette | lesbare Revision aller Einträge zum Gegenlesen und für Reviews |
 | `Assets/config/id-register.json` | generiert | Werkzeugkette | vergebene und reservierte IDs je Kategorie |
 | `Assets/config/gameplay.json` | authored | Mensch | Punkte, Rundendauer, Toleranzen, Ziellastgrenzen, Zustandsdauern |
-| `Assets/config/audio.pools.json` | authored | Mensch | Pools: ID, Kategorie, Lautstärkeprofil, Fallback, Beutelregel — **ohne** Dateiliste |
+| `Assets/config/audio.pools.json` | authored | Mensch | Pools: ID, Dateigruppe, Kategorie, Lautstärkeprofil, Fallback, Beutelregel — **ohne** Dateiliste |
 | `Assets/config/depth.profiles.json` | authored | Mensch | Tiefenstaffelung ([00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.6) |
 | `media-source/zone-authoring/<assetId>.zones.json` | authored (Editor) | Editor | Pivot und Trefferzonen je Werkzeug |
 | `media-source/assets/<assetId>.meta.json` | authored (Wizard) | Wizard | Kategorie, Werkzeugtyp, Größenklasse, PKD, Zustände, Herkunft, Lizenz, Seed, Prompt |
 | `media-source/plan/delivery-list.csv` | einmaliger Import | Mensch, KI-gestützt | Mengengerüst aus [00002](00002-c-vollmer-assetlieferung.concept.md) Kap. 3.4 als Eingabe für die Vorab-Erzeugung |
 | `Assets/templates/<kategorie>.template.json` | authored | Mensch | Pflichtfelder und Grenzwerte je Kategorie für die Validierung |
 
-Die Dateiliste der Audiopools entsteht **nicht** von Hand: Der Build liest den Audioordner, gruppiert nach `<aktion>_<nn>.<format>` und füllt `variants[]` aus den vorhandenen Dateien. Die authored Datei beschreibt nur noch das Verhalten des Pools.
+Die Dateiliste der Audiopools entsteht **nicht** von Hand: Der Build liest den Audioordner, gruppiert nach `<aktion>_<nn>.<format>` und füllt `variants[]` aus den vorhandenen Dateien. Die authored Datei beschreibt das Verhalten des Pools und nennt seine Dateigruppe (`fileGroup`, etwa `cheer_high` für `laser_success`); eigene, sprechende Dateinamen bleiben damit ohne Umbenennung gültig.
 
 **Größenordnung der authored Dateien (Beispiel, nicht vollständig):**
 
 ```json
-// Assets/config/audio.pools.json — Pools ohne Dateilisten; variants[] entsteht aus dem Ordner
+// Assets/config/audio.pools.json — Pools nennen ihre Dateigruppe; variants[] entsteht aus dem Ordner
 {
   "pools": [
-    { "poolId": "laser_success", "category": "laser-sfx", "volumeProfile": "voice",
-      "bagRule": "shuffle_no_repeat", "fallback": "feedback_success" },
-    { "poolId": "saw_fail", "category": "grind-sfx", "volumeProfile": "voice",
-      "bagRule": "shuffle_no_repeat", "fallback": "feedback_fail" }
+    { "poolId": "laser_success", "fileGroup": "cheer_high", "category": "laser-sfx", "volumeProfile": "voice",
+      "bagRule": "shuffle_no_repeat", "fallback": "laser_effect" },
+    { "poolId": "saw_fail", "fileGroup": "yell_low", "category": "grind-sfx", "volumeProfile": "voice",
+      "bagRule": "shuffle_no_repeat", "fallback": "grind_effect" }
   ]
 }
 ```
@@ -165,7 +165,7 @@ Damit bleibt pro Asset nur diese eine kleine Datei plus die Zonendatei — Treff
 | `vgtools manifest verify` | Prüflauf ohne Schreiben (CI) | wie oben | Exit-Code 0/1 und Befundliste |
 | `vgtools new asset` | Wizard für ein neues Bildasset | Bilddatei im Eingangsordner | `<assetId>.meta.json`, Zielname, ID-Eintrag |
 | `vgtools norm check` | Normprüfer für gelieferte Bilder | Bilddatei | Befund: Größe, Rand, Alpha-Kante, Silhouettenmaß |
-| `vgtools audio pools build` | Poolvarianten aus Dateien ableiten | `Assets/audio/**` | Ergänzung in `manifest.json` |
+| `vgtools audio pools build` | Poolvarianten aus Dateigruppen ableiten | `Assets/audio/**` | Ergänzung in `manifest.json` |
 | Zonen-Editor `/tools/zones` | Zonen und Pivot per Maus setzen | Laufzeitbild | `<assetId>.zones.json` |
 
 **Wichtige Reihenfolge:** Der Editor und der Wizard erzeugen ausschließlich Eingabedateien. Nur der Build schreibt in `Assets/config/`. Dadurch ist jederzeit nachvollziehbar, welche Datei Quelle und welche Datei Ergebnis ist.

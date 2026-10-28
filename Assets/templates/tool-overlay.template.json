@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [{ "$ref": "asset.common.schema.json" }],
+  "type": "object",
+  "required": ["family", "state", "anchor"],
+  "properties": {
+    "assetId": { "pattern": "^ovl_[0-9]{4}$" }, "category": { "const": "tool-overlay" },
+    "family": { "enum": ["generic", "drill", "milling_cutter", "saw_blade"] },
+    "state": { "enum": ["dull", "in_progress", "sharp", "failed"] }, "anchor": { "const": "cut-zone" }
+  },
+  "x-imageNorm": { "directory": "images/overlays", "formats": ["webp"], "width": 256, "height": 256, "transparent": true }
+}

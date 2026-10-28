@@ -1,0 +1,311 @@
+{
+  "assets": [],
+  "audioPools": [
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "grind-sfx",
+      "fallback": "generated_tone",
+      "poolId": "grind_effect",
+      "variants": [
+        "grind/grind_01.wav",
+        "grind/grind_02.wav",
+        "grind/grind_03.wav",
+        "grind/grind_04.wav"
+      ],
+      "volumeProfile": "feedback"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "laser-sfx",
+      "fallback": "generated_tone",
+      "poolId": "laser_effect",
+      "variants": [
+        "laser/laser_01.wav",
+        "laser/laser_02.wav",
+        "laser/laser_03.wav",
+        "laser/laser_04.wav",
+        "laser/laser_05.wav",
+        "laser/laser_06.wav"
+      ],
+      "volumeProfile": "feedback"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "laser-sfx",
+      "fallback": "laser_effect",
+      "poolId": "laser_fail",
+      "variants": [
+        "laser/yell_high_01.wav",
+        "laser/yell_high_02.wav",
+        "laser/yell_high_03.wav",
+        "laser/yell_high_04.wav",
+        "laser/yell_high_05.wav"
+      ],
+      "volumeProfile": "voice"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "laser-sfx",
+      "fallback": "laser_effect",
+      "poolId": "laser_success",
+      "variants": [
+        "laser/cheer_high_01.wav",
+        "laser/cheer_high_02.wav",
+        "laser/cheer_high_03.wav",
+        "laser/cheer_high_04.wav"
+      ],
+      "volumeProfile": "voice"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "grind-sfx",
+      "fallback": "grind_effect",
+      "poolId": "saw_fail",
+      "variants": [
+        "grind/yell_low_01.wav",
+        "grind/yell_low_02.wav",
+        "grind/yell_low_03.wav",
+        "grind/yell_low_04.wav",
+        "grind/yell_low_05.wav"
+      ],
+      "volumeProfile": "voice"
+    },
+    {
+      "bagRule": "shuffle_no_repeat",
+      "category": "grind-sfx",
+      "fallback": "grind_effect",
+      "poolId": "saw_success",
+      "variants": [
+        "grind/cheer_low_01.wav",
+        "grind/cheer_low_02.wav",
+        "grind/cheer_low_03.wav",
+        "grind/cheer_low_04.wav"
+      ],
+      "volumeProfile": "voice"
+    }
+  ],
+  "configVersion": "9258f954cfdb3873aa729f0a66732de54b01899f31e4e2b9d58435aaed192640",
+  "generation": {
+    "contentChecksum": "a56c30d16d98916894df44fb201dd6f7b5ad03172826ecf2b4b550fa4e180e28",
+    "tool": "vgtools"
+  },
+  "manifestVersion": "1.0.0",
+  "planned": [
+    {
+      "assetId": "bg_0001",
+      "category": "showroom-stage",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0001",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0002",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0003",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "cast_0004",
+      "category": "showroom-cast",
+      "status": "planned"
+    },
+    {
+      "assetId": "fx_0001",
+      "category": "laser-effect",
+      "status": "planned"
+    },
+    {
+      "assetId": "fx_0002",
+      "category": "grind-effect",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0001",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0002",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0003",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0004",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0005",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "occ_0006",
+      "category": "foreground-occluder",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0001",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0002",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0003",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0004",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0005",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0006",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0007",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0008",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0009",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0010",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0011",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "ovl_0012",
+      "category": "tool-overlay",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0001",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0002",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0003",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0004",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0005",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0006",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0007",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0008",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0009",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0010",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0011",
+      "category": "tool-image",
+      "status": "planned"
+    },
+    {
+      "assetId": "tool_0012",
+      "category": "tool-image",
+      "status": "planned"
+    }
+  ],
+  "scoreProfiles": [
+    {
+      "correctScore": 10,
+      "missPenalty": -5,
+      "scoreProfileId": "laser_default",
+      "shaftHitPenalty": -10,
+      "wrongSharpeningPenalty": -5
+    },
+    {
+      "correctScore": 10,
+      "missPenalty": -5,
+      "scoreProfileId": "saw_default",
+      "shaftHitPenalty": -10,
+      "wrongSharpeningPenalty": -5
+    }
+  ],
+  "spawnProfiles": [
+    {
+      "difficultyRampId": "ramp_default",
+      "entryEdges": [
+        "left",
+        "right"
+      ],
+      "maxConcurrentTargets": 6,
+      "maxStageCoverage": 0.45,
+      "minTargetSpacingFactor": 1.25,
+      "spawnProfileId": "stage_default"
+    }
+  ],
+  "stage": [],
+  "tools": []
+}

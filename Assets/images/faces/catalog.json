@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "states": {
+    "dull": [
+      "face_dull_bored_01.webp",
+      "face_dull_bored_02.webp",
+      "face_dull_bored_03.webp",
+      "face_dull_bored_04.webp",
+      "face_dull_nervous_01.webp",
+      "face_dull_nervous_02.webp",
+      "face_dull_nervous_03.webp",
+      "face_dull_nervous_04.webp",
+      "face_dull_cheeky_01.webp",
+      "face_dull_cheeky_02.webp",
+      "face_dull_cheeky_03.webp",
+      "face_dull_cheeky_04.webp"
+    ],
+    "inProgress": [
+      "face_inProgress_grinding_01.webp",
+      "face_inProgress_grinding_02.webp",
+      "face_inProgress_grinding_03.webp",
+      "face_inProgress_grinding_04.webp"
+    ],
+    "sharp": [
+      "face_sharp_excited_01.webp",
+      "face_sharp_excited_02.webp",
+      "face_sharp_excited_03.webp",
+      "face_sharp_excited_04.webp",
+      "face_sharp_proud_01.webp",
+      "face_sharp_proud_02.webp",
+      "face_sharp_proud_03.webp",
+      "face_sharp_proud_04.webp"
+    ],
+    "failed": [
+      "face_failed_dazed_01.webp",
+      "face_failed_dazed_02.webp",
+      "face_failed_dazed_03.webp",
+      "face_failed_dazed_04.webp",
+      "face_failed_startled_01.webp",
+      "face_failed_startled_02.webp",
+      "face_failed_startled_03.webp",
+      "face_failed_startled_04.webp"
+    ]
+  }
+}
