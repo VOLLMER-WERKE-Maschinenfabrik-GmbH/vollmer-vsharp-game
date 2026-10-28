@@ -10,9 +10,11 @@ public interface IGameClient
 {
     Task SnapshotUpdated(GameSnapshot snapshot);
     Task ActionResolved(ActionResolved action);
+    Task DemoUpdated(DemoSnapshot snapshot);
 }
 
-public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOriginPolicy, HighscoreService highscores) : Hub<IGameClient>
+public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOriginPolicy, HighscoreService highscores,
+    DemoGameService demoGame) : Hub<IGameClient>
 {
     private const string ClientInstanceContextKey = "vgame.client-instance-id";
 
@@ -31,6 +33,12 @@ public sealed class GameHub(GameEngine gameEngine, IClientOriginPolicy clientOri
         var snapshot = gameEngine.GetSnapshot();
         await Clients.Caller.SnapshotUpdated(snapshot);
         return snapshot;
+    }
+
+    public DemoSnapshot GetDemoSnapshot()
+    {
+        EnsureJoined();
+        return demoGame.GetSnapshot();
     }
 
     public async Task<bool> SelectMode(GameMode mode)

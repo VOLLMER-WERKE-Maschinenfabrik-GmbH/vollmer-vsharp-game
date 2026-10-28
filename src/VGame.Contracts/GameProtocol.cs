@@ -151,3 +151,6 @@ public sealed record PlayerDataNotice(string Version, string ContactEmail, strin
 public sealed record OwnHighscore(HighscoreEntry Entry, string DeletionCode);
 
 public sealed record GameStageArea(double Left, double Top, double Width, double Height);
+
+public sealed record DemoSnapshot(string Presentation, long RemainingMs, GameSnapshot? Game,
+    IReadOnlyList<ActionResolved> Actions);

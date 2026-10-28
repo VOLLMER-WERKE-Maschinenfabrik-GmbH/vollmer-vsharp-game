@@ -66,6 +66,8 @@ type ActionResolved = {
     feedbackPoint?: Point2 | null;
     audioEvent: string;
 };
+type DemoSnapshot = { presentation: "inactive" | "logo" | "laser" | "saw"; remainingMs: number;
+    game: GameSnapshot | null; actions: ActionResolved[] };
 type GestureSample = { x: number; y: number; elapsedMs: number };
 type ActiveGesture = { startedAt: number; samples: GestureSample[] };
 
@@ -97,6 +99,7 @@ class WorkshopScene extends Phaser.Scene {
     private startingRound = false;
     private playerDialogs?: PlayerDialogs;
     private registeredRound = false;
+    private demoSnapshot: DemoSnapshot | null = null;
     private readonly faceVariants: Record<ToolState, string[]> = { dull: [], inProgress: [], sharp: [], failed: [] };
 
     constructor(requestedRole: ClientRole, private readonly shell: MachineShell) {
@@ -169,6 +172,7 @@ class WorkshopScene extends Phaser.Scene {
         });
         this.connection.on("SnapshotUpdated", (snapshot: GameSnapshot) => this.applySnapshot(snapshot));
         this.connection.on("ActionResolved", (action: ActionResolved) => this.showActionFeedback(action));
+        this.connection.on("DemoUpdated", (snapshot: DemoSnapshot) => this.applyDemoSnapshot(snapshot));
         this.connection.onreconnecting(() => { this.audio?.setRound(null, false, false); this.shell.setConnection("VERBINDE …", true); });
         this.connection.onclose(() => { this.audio?.setRound(null, false, false); this.shell.setConnection("OFFLINE", true); });
         this.connection.onreconnected(() => this.joinHub());
@@ -281,6 +285,7 @@ class WorkshopScene extends Phaser.Scene {
             this.role = response.role;
             this.resumeToken = response.resumeToken;
             this.applySnapshot(response.snapshot);
+            this.applyDemoSnapshot(await this.connection.invoke<DemoSnapshot>("GetDemoSnapshot"));
             this.shell.setError("");
         } catch (error) {
             this.shell.setConnection("OFFLINE", true);
@@ -326,7 +331,7 @@ class WorkshopScene extends Phaser.Scene {
         } else {
             this.titleText.setVisible(false);
         }
-        this.attractScreen?.setActive(snapshot.phase !== "playing");
+        this.renderPresentation();
 
         const canSelectMode = this.role === "player" && snapshot.phase !== "playing";
         const canRequestRole = this.requestedRole === "player" && this.role === "watcher" && snapshot.phase !== "playing";
@@ -334,6 +339,36 @@ class WorkshopScene extends Phaser.Scene {
         this.shell.update({ ...snapshot, canStart: canStartRound, canSelectMode, canRequestRole,
             activePlayer: this.role === "player", targetCount: snapshot.tools.length });
         if (roundEnded && !snapshot.wasAborted && this.role === "player") void this.showLeaderboard(true);
+    }
+
+    private applyDemoSnapshot(snapshot: DemoSnapshot): void {
+        const changedRound = this.demoSnapshot?.game?.roundId !== snapshot.game?.roundId;
+        this.demoSnapshot = snapshot;
+        if (this.snapshot?.phase === "playing") return;
+        if (changedRound) {
+            for (const effect of this.feedbackObjects) { this.tweens.killTweensOf(effect); effect.destroy(); }
+            this.feedbackObjects.clear();
+            this.touchFeedback = undefined;
+            this.resolvedEvents.clear();
+        }
+        this.renderPresentation();
+        if (snapshot.game) for (const action of snapshot.actions) this.showActionFeedback(action, true);
+    }
+
+    private renderPresentation(): void {
+        if (!this.snapshot) return;
+        if (this.snapshot.phase === "playing") {
+            this.attractScreen?.setActive(false);
+            this.attractScreen?.setDemo(null);
+            return;
+        }
+        const demo = this.demoSnapshot?.game;
+        const showingDemo = !!demo && (this.demoSnapshot?.presentation === "laser" || this.demoSnapshot?.presentation === "saw");
+        this.titleText.setVisible(false);
+        this.syncTargets(showingDemo ? demo.tools : []);
+        this.attractScreen?.setDemo(showingDemo ? { ...demo, remainingMs: this.demoSnapshot!.remainingMs } : null);
+        this.attractScreen?.setActive(true);
+        this.audio?.setRound(showingDemo ? demo.roundId : this.snapshot.roundId, this.role === "player", showingDemo);
     }
 
     private syncTargets(tools: ToolSnapshot[]): void {
@@ -698,21 +733,22 @@ class WorkshopScene extends Phaser.Scene {
         return Phaser.Math.Distance.Between(point.x, point.y, center.x, center.y);
     }
 
-    private showActionFeedback(action: ActionResolved): void {
-        if (action.roundId !== this.snapshot?.roundId) return;
+    private showActionFeedback(action: ActionResolved, demo = false): void {
+        const snapshot = demo ? this.demoSnapshot?.game : this.snapshot;
+        if (!snapshot || snapshot.phase !== "playing" || action.roundId !== snapshot.roundId) return;
         if (this.resolvedEvents.has(action.eventId)) return;
         this.resolvedEvents.add(action.eventId);
         if (this.resolvedEvents.size > 1024) this.resolvedEvents.delete(this.resolvedEvents.values().next().value!);
         this.audio?.play(action.eventId, action.roundId, action.outcome === "miss" ? null : action.audioEvent,
-            this.snapshot.mode === "saw" ? "grind_effect" : "laser_effect");
+            snapshot.mode === "saw" ? "grind_effect" : "laser_effect");
         if (this.touchFeedback !== undefined) {
             this.touchFeedback.destroy();
         }
 
         const color = action.outcome === "success" ? 0x94e200 : 0xfe0e26;
-        const target = this.snapshot?.tools.find(tool => tool.definition.toolId === action.toolId);
+        const target = snapshot.tools.find(tool => tool.definition.toolId === action.toolId);
         const feedbackPoint = action.feedbackPoint ?? this.lastGesturePoint ?? target?.placement?.center ?? { x: 0.5, y: 0.5 };
-        this.shell.animateAction(feedbackPoint, action.outcome === "success");
+        if (!demo) this.shell.animateAction(feedbackPoint, action.outcome === "success");
         const feedback = this.trackFeedback(this.add.circle(feedbackPoint.x * gameWidth, feedbackPoint.y * gameHeight, 26, color, 0.55)
             .setDepth(80));
         this.touchFeedback = feedback;

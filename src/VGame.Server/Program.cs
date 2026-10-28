@@ -45,6 +45,7 @@ builder.Services.AddSingleton(new ZoneEditorService(Path.GetDirectoryName(Path.G
 #endif
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<GameEngine>();
+builder.Services.AddSingleton<DemoGameService>();
 builder.Services.AddSingleton<HighscoreService>();
 builder.Services.AddSingleton<IClientOriginPolicy, ClientOriginPolicy>();
 builder.Services.AddSignalR()

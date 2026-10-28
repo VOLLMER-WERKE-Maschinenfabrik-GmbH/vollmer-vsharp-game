@@ -13,6 +13,8 @@ export class AttractScreen {
     private environment?: WebGLRenderTarget;
     private frame?: number;
     private active = false;
+    private demo = false;
+    private readonly demoStatus = document.createElement("div");
     private initializing = false;
     private destroyed = false;
     private failed = false;
@@ -38,7 +40,14 @@ export class AttractScreen {
         const prompt = document.createElement("div");
         prompt.className = "attract-prompt";
         prompt.textContent = "DRÜCKE START UM ZU SPIELEN";
-        this.root.append(logo, title, information, prompt);
+        this.demoStatus.className = "attract-demo-status";
+        this.demoStatus.hidden = true;
+        const demoLabel = document.createElement("strong");
+        demoLabel.className = "attract-demo-label";
+        demoLabel.textContent = "DEMO";
+        this.demoStatus.append(demoLabel);
+        this.root.dataset.presentation = "logo";
+        this.root.append(logo, title, information, this.demoStatus, prompt);
         stage.append(this.root);
         this.observer = new ResizeObserver(() => this.resize());
         this.observer.observe(this.root);
@@ -55,6 +64,19 @@ export class AttractScreen {
             this.resize();
         }
         this.updateAnimation();
+    }
+
+    setDemo(state: { mode: "laser" | "saw"; remainingMs: number; score: number; combo: number } | null): void {
+        const changed = this.demo !== (state !== null);
+        this.demo = state !== null;
+        this.root.classList.toggle("is-demo", this.demo);
+        if (this.renderer) this.renderer.domElement.hidden = this.demo;
+        this.root.dataset.presentation = state?.mode ?? "logo";
+        this.demoStatus.hidden = !this.demo;
+        if (changed) {
+            this.resize();
+            this.updateAnimation();
+        }
     }
 
     destroy(): void {
@@ -92,6 +114,7 @@ export class AttractScreen {
             this.renderer.toneMapping = three.ACESFilmicToneMapping;
             this.renderer.toneMappingExposure = 1.15;
             this.renderer.domElement.className = "attract-canvas";
+            this.renderer.domElement.hidden = this.demo;
             this.renderer.domElement.setAttribute("aria-hidden", "true");
             this.root.prepend(this.renderer.domElement);
             this.scene = new three.Scene();
@@ -146,7 +169,7 @@ export class AttractScreen {
     }
 
     private resize(): void {
-        if (!this.renderer || !this.camera || !this.active) return;
+        if (!this.renderer || !this.camera || !this.active || this.demo) return;
         const bounds = this.root.getBoundingClientRect();
         if (bounds.width <= 0 || bounds.height <= 0) return;
         this.renderer.setSize(bounds.width, bounds.height, false);
@@ -157,14 +180,14 @@ export class AttractScreen {
 
     private readonly updateAnimation = (): void => {
         this.stop();
-        if (!this.active || !this.renderer) return;
+        if (!this.active || !this.renderer || this.demo) return;
         this.render(performance.now());
         if (!document.hidden && !this.reducedMotion.matches) this.frame = requestAnimationFrame(this.animate);
     };
 
     private readonly animate = (timestamp: number): void => {
         this.frame = undefined;
-        if (!this.active || this.destroyed || document.hidden || this.reducedMotion.matches) return;
+        if (!this.active || this.destroyed || this.demo || document.hidden || this.reducedMotion.matches) return;
         this.render(timestamp);
         this.frame = requestAnimationFrame(this.animate);
     };

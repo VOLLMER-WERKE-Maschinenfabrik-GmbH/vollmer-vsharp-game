@@ -8,6 +8,7 @@ public sealed class RoundClockService(
     GameEngine gameEngine,
     IHubContext<GameHub, IGameClient> hubContext,
     HighscoreService highscores,
+    DemoGameService demoGame,
     ILogger<RoundClockService> logger) : BackgroundService
 {
     private bool _storageWarningReported;
@@ -32,6 +33,7 @@ public sealed class RoundClockService(
             {
                 await hubContext.Clients.All.SnapshotUpdated(snapshot);
             }
+            await hubContext.Clients.All.DemoUpdated(demoGame.Advance());
         }
     }
 }

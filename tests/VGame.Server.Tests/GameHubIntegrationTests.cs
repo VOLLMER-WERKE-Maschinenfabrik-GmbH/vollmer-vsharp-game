@@ -432,6 +432,48 @@ public sealed class GameHubIntegrationTests
 
     [TestMethod]
     [Timeout(15000, CooperativeCancellation = true)]
+    public async Task Demo_BroadcastsToPlayerAndWatcherWithoutStartingRealRoundOrSavingHighscore()
+    {
+        // Prüft synchronisierte Demo-Snapshots, unveränderte Besucherdaten und sofortigen Vorrang einer echten Runde.
+        var clock = new RegistrationTimeProvider();
+        await using var factory = CreateFactory(clock);
+        await using var player = CreateConnection(factory);
+        await using var watcher = CreateConnection(factory);
+        await player.StartAsync(TestContext.CancellationToken);
+        await watcher.StartAsync(TestContext.CancellationToken);
+        await player.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("demo-visitor", ClientRole.Player), TestContext.CancellationToken);
+        await watcher.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("demo-watcher", ClientRole.Watcher), TestContext.CancellationToken);
+        var demo = factory.Services.GetRequiredService<DemoGameService>();
+        demo.Advance();
+        Assert.AreEqual("logo", (await watcher.InvokeAsync<DemoSnapshot>("GetDemoSnapshot", TestContext.CancellationToken)).Presentation);
+        var playerDemo = new TaskCompletionSource<DemoSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var watcherDemo = new TaskCompletionSource<DemoSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var interrupted = new TaskCompletionSource<DemoSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        player.On<DemoSnapshot>("DemoUpdated", snapshot =>
+        {
+            if (snapshot.Presentation == "laser") playerDemo.TrySetResult(snapshot);
+            if (snapshot.Presentation == "inactive") interrupted.TrySetResult(snapshot);
+        });
+        watcher.On<DemoSnapshot>("DemoUpdated", snapshot =>
+        {
+            if (snapshot.Presentation == "laser") watcherDemo.TrySetResult(snapshot);
+        });
+        clock.Advance(TimeSpan.FromSeconds(60));
+        var displayed = await playerDemo.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        var watched = await watcherDemo.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken);
+        Assert.AreEqual(displayed.Game!.RoundId, watched.Game!.RoundId);
+        var real = await player.InvokeAsync<GameSnapshot>("GetSnapshot", TestContext.CancellationToken);
+        Assert.AreEqual(GamePhase.Attract, real.Phase);
+        Assert.AreEqual("demo-visitor", real.ActiveClientId);
+        Assert.IsNull(real.RoundId);
+        Assert.AreEqual(0, real.Score);
+        Assert.IsEmpty(await player.InvokeAsync<HighscoreEntry[]>("GetHighscores", GameMode.Laser, TestContext.CancellationToken));
+        Assert.IsTrue(await player.InvokeAsync<bool>("StartRound", TestContext.CancellationToken));
+        Assert.AreEqual("inactive", (await interrupted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.CancellationToken)).Presentation);
+    }
+
+    [TestMethod]
+    [Timeout(15000, CooperativeCancellation = true)]
     public async Task PlayerRegistration_CompletedRoundPersistsAndWatcherCannotReadContacts()
     {
         // Prüft Registrierung, automatisches Rundenende, öffentliche Rangliste und den privaten Löschcode über echtes SignalR.
