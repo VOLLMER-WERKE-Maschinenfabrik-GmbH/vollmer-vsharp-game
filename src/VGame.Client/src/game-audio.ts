@@ -27,6 +27,7 @@ export class GameAudio {
     private context?: AudioContext;
     private master?: GainNode;
     private active = false;
+    private destroyed = false;
     private playing = false;
     private volume = 1;
     private roundId: string | null = null;
@@ -79,6 +80,7 @@ export class GameAudio {
     }
 
     async unlock(): Promise<void> {
+        if (!this.active || this.destroyed) return;
         try {
             if (!this.context) {
                 this.context = new AudioContext();
@@ -90,15 +92,21 @@ export class GameAudio {
                 limiter.attack.value = 0.003;
                 limiter.release.value = 0.12;
                 this.master.connect(limiter).connect(this.context.destination);
+                this.context.addEventListener("statechange", this.onContextStateChange);
             }
-            await this.context.resume();
             this.applyVolume();
             if (!this.decodePromise) this.decodePromise = this.decode();
-            await this.decodePromise;
+            await Promise.all([this.context.resume(), this.decodePromise]);
             this.syncMusic();
             if (this.context.state !== "running") this.report("Audio ist durch den Browser gesperrt. Erneut Start drücken.");
-        } catch { this.report("Audio kann nicht gestartet werden. Das Spiel bleibt spielbar."); }
+        } catch { if (!this.destroyed) this.report("Audio kann nicht gestartet werden. Das Spiel bleibt spielbar."); }
     }
+
+    private readonly onContextStateChange = (): void => {
+        if (this.destroyed) return;
+        this.applyVolume();
+        this.syncMusic();
+    };
 
     private async decode(): Promise<void> {
         await this.preloadPromise;
@@ -116,6 +124,7 @@ export class GameAudio {
     }
 
     setRound(roundId: string | null, active: boolean, playing: boolean): void {
+        const becameActive = active && !this.active;
         if (this.roundId !== roundId) { this.events.clear(); this.lastVoiceStart = Number.NEGATIVE_INFINITY; this.stopAll(); }
         this.roundId = roundId;
         this.active = active;
@@ -123,6 +132,7 @@ export class GameAudio {
         if (!active || !playing) this.stopEffects();
         this.applyVolume();
         this.syncMusic();
+        if (becameActive) void this.unlock();
     }
 
     play(eventId: string, roundId: string, voicePool: string | null, effectPool: string): void {
@@ -286,5 +296,10 @@ export class GameAudio {
 
     stopAll(): void { this.stopEffects(); this.stopMusic(); }
 
-    destroy(): void { this.stopAll(); void this.context?.close(); }
+    destroy(): void {
+        this.destroyed = true;
+        this.stopAll();
+        this.context?.removeEventListener("statechange", this.onContextStateChange);
+        void this.context?.close();
+    }
 }
