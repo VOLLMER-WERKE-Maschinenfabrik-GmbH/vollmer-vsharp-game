@@ -73,6 +73,7 @@ type ActiveGesture = { startedAt: number; samples: GestureSample[] };
 
 const gameWidth = 1280;
 const gameHeight = 720;
+const snapshotInterpolationMilliseconds = 100;
 const showroomImagePath = "/Assets/images/background/bg_0001.webp";
 const stageArea = { x: 64, y: 201.6, width: 1152, height: 460.8 };
 
@@ -385,6 +386,7 @@ class WorkshopScene extends Phaser.Scene {
         const currentIds = new Set(tools.map(tool => tool.definition.toolId));
         for (const [toolId, container] of this.targetContainers) {
             if (!currentIds.has(toolId)) {
+                this.tweens.killTweensOf(container);
                 container.destroy(true);
                 this.targetContainers.delete(toolId);
             }
@@ -402,10 +404,24 @@ class WorkshopScene extends Phaser.Scene {
                 this.targetContainers.set(tool.definition.toolId, container);
             }
 
-            container.setPosition(
-                tool.placement.center.x * gameWidth,
-                tool.placement.center.y * gameHeight);
-            container.setAngle(tool.placement.rotationDegrees);
+            const targetX = tool.placement.center.x * gameWidth;
+            const targetY = tool.placement.center.y * gameHeight;
+            if (container.getData("hasSnapshotPosition")) {
+                const angleDifference = ((tool.placement.rotationDegrees - container.angle + 540) % 360) - 180;
+                this.tweens.add({
+                    targets: container,
+                    x: targetX,
+                    y: targetY,
+                    angle: container.angle + angleDifference,
+                    duration: snapshotInterpolationMilliseconds,
+                    ease: "Linear",
+                    overwrite: true
+                });
+            } else {
+                container.setPosition(targetX, targetY);
+                container.setAngle(tool.placement.rotationDegrees);
+                container.setData("hasSnapshotPosition", true);
+            }
             container.setDepth(40 + layer);
             container.setData("state", tool.state);
             this.drawTool(container, tool);
