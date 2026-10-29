@@ -1,4 +1,3 @@
-using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text.Json;
 using VGame.Contracts;
@@ -14,7 +13,6 @@ public sealed class HighscoreService
     private readonly TimeProvider _timeProvider;
     private readonly string _filePath;
     private readonly TimeZoneInfo _timeZone;
-    private readonly PlayerDataNotice _notice;
     private readonly List<StoredHighscore> _entries;
     private PendingRegistration? _pending;
 
@@ -25,17 +23,24 @@ public sealed class HighscoreService
         _filePath = configuration["PlayerData:StoragePath"] ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Vollmer", "VGame", "highscores.json");
         _timeZone = TimeZoneInfo.FindSystemTimeZoneById(configuration["PlayerData:TimeZoneId"] ?? "Europe/Berlin");
-        var contact = configuration["PlayerData:ContactEmail"] ?? "";
-        if (!MailAddress.TryCreate(contact, out _)) throw new InvalidOperationException("Datenschutz-Kontakt fehlt.");
-        _notice = new PlayerDataNotice(configuration["PlayerData:PrivacyVersion"] ?? "2026-10-27", contact,
-            _timeZone.Id, "Löschung am folgenden Kalendertag um 00:00 Uhr in deutscher Ortszeit.");
-        _entries = File.Exists(_filePath)
-            ? JsonSerializer.Deserialize<List<StoredHighscore>>(File.ReadAllText(_filePath), JsonOptions)
-                ?? throw new InvalidDataException("Highscore-Datei ist ungültig.")
-            : [];
+        if (File.Exists(_filePath))
+        {
+            var storedData = File.ReadAllText(_filePath);
+            _entries = JsonSerializer.Deserialize<List<StoredHighscore>>(storedData, JsonOptions)
+                ?? throw new InvalidDataException("Highscore-Datei ist ungültig.");
+            using var document = JsonDocument.Parse(storedData);
+            var hasLegacyFields = document.RootElement.EnumerateArray()
+                .Where(entry => entry.ValueKind == JsonValueKind.Object)
+                .SelectMany(entry => entry.EnumerateObject())
+                .Any(property => property.Name.Equals("Email", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Equals("LeaderboardConsent", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Equals("PrizeNotificationConsent", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Equals("PrivacyVersion", StringComparison.OrdinalIgnoreCase)
+                    || property.Name.Equals("ConsentedAt", StringComparison.OrdinalIgnoreCase));
+            if (hasLegacyFields) Persist(_entries);
+        }
+        else _entries = [];
     }
-
-    public PlayerDataNotice GetNotice() => _notice;
 
     public bool StartRound(string clientInstanceId, PlayerRegistration? registration = null)
     {
@@ -49,7 +54,7 @@ public sealed class HighscoreService
             if (!_gameEngine.StartRound(clientInstanceId)) return false;
             var startedSnapshot = _gameEngine.GetSnapshot();
             _pending = validated is null ? null : new PendingRegistration(
-                startedSnapshot.RoundId!.Value, clientInstanceId, validated, startedSnapshot.Mode, _timeProvider.GetUtcNow());
+                startedSnapshot.RoundId!.Value, clientInstanceId, validated, startedSnapshot.Mode);
             return true;
         }
     }
@@ -101,18 +106,7 @@ public sealed class HighscoreService
         var name = registration.DisplayName?.Trim().Normalize() ?? "";
         if (name.Length is < 1 or > 40 || name.Any(char.IsControl))
             throw new ArgumentException("Bitte einen Namen oder Fantasienamen mit 1 bis 40 Zeichen eingeben.");
-        if (!registration.LeaderboardConsent || registration.PrivacyVersion != _notice.Version)
-            throw new ArgumentException("Bitte den aktuellen Datenschutzhinweis und die Ranglisteneinwilligung bestätigen.");
-        var email = registration.Email?.Trim();
-        if (registration.PrizeNotificationConsent)
-        {
-            if (email is null || email.Length > 254 || !MailAddress.TryCreate(email, out var address)
-                || !string.Equals(address.Address, email, StringComparison.OrdinalIgnoreCase) || email.Any(char.IsControl))
-                throw new ArgumentException("Für die Gewinnbenachrichtigung wird eine gültige E-Mail-Adresse benötigt.");
-        }
-        else if (!string.IsNullOrEmpty(email))
-            throw new ArgumentException("E-Mail-Adressen werden nur mit Zustimmung zur Gewinnbenachrichtigung gespeichert.");
-        return registration with { DisplayName = name, Email = registration.PrizeNotificationConsent ? email : null };
+        return registration with { DisplayName = name };
     }
 
     private void ProcessCurrentRound()
@@ -145,9 +139,7 @@ public sealed class HighscoreService
 
         var entry = new StoredHighscore(pending.RoundId, pending.ClientInstanceId,
             new HighscoreEntry(Guid.NewGuid(), pending.Registration.DisplayName, pending.Mode, snapshot.Score, completedAt),
-            pending.Registration.Email, pending.Registration.LeaderboardConsent, pending.Registration.PrizeNotificationConsent,
-            pending.Registration.PrivacyVersion, pending.ConsentedAt, expiresAt,
-            Convert.ToHexString(RandomNumberGenerator.GetBytes(24)));
+            expiresAt, Convert.ToHexString(RandomNumberGenerator.GetBytes(24)));
         Persist([.. _entries, entry]);
         _entries.Add(entry);
         _pending = null;
@@ -175,9 +167,8 @@ public sealed class HighscoreService
     }
 
     private sealed record PendingRegistration(Guid RoundId, string ClientInstanceId, PlayerRegistration Registration,
-        GameMode Mode, DateTimeOffset ConsentedAt, DateTimeOffset? CompletedAt = null, DateTimeOffset? ExpiresAt = null);
+        GameMode Mode, DateTimeOffset? CompletedAt = null, DateTimeOffset? ExpiresAt = null);
 
-    private sealed record StoredHighscore(Guid RoundId, string OwnerClientId, HighscoreEntry Entry, string? Email,
-        bool LeaderboardConsent, bool PrizeNotificationConsent, string PrivacyVersion, DateTimeOffset ConsentedAt,
+    private sealed record StoredHighscore(Guid RoundId, string OwnerClientId, HighscoreEntry Entry,
         DateTimeOffset ExpiresAt, string DeletionCode);
 }

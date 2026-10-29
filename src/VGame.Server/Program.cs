@@ -106,11 +106,6 @@ if (Directory.Exists(Path.Combine(assetDirectory, "audio")))
 app.UseAntiforgery();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
-app.MapGet("/api/player-data", (HighscoreService highscores, HttpContext context) =>
-{
-    context.Response.Headers.CacheControl = "no-store";
-    return Results.Ok(highscores.GetNotice());
-});
 app.MapGet("/api/game-audio", (HttpContext context, ILogger<Program> logger) =>
 {
     context.Response.Headers.CacheControl = "no-store";
