@@ -36,11 +36,59 @@ public sealed class HighscoreServiceTests
         var publicJson = JsonSerializer.Serialize(entry);
         Assert.DoesNotContain("email", publicJson.ToLowerInvariant());
         Assert.DoesNotContain("deletion", publicJson.ToLowerInvariant());
+        var storedJson = File.ReadAllText(Path.Combine(_directory, "highscores.json")).ToLowerInvariant();
+        Assert.DoesNotContain("email", storedJson);
+        Assert.DoesNotContain("leaderboardconsent", storedJson);
+        Assert.DoesNotContain("privacyversion", storedJson);
         Assert.IsEmpty(service.GetHighscores(GameMode.Saw));
         Assert.IsNotNull(service.GetOwnHighscore("player", roundId));
         Assert.IsNull(service.GetOwnHighscore("watcher", roundId));
         var reloaded = CreateService(engine, clock);
         Assert.AreEqual(entry.EntryId, Assert.ContainsSingle(reloaded.GetHighscores(GameMode.Laser)).EntryId);
+    }
+
+    [TestMethod]
+    public void Highscores_LegacyEmailDataIsRemovedWhenLoaded()
+    {
+        // Prüft, dass beim Laden älterer Highscore-Dateien E-Mail- und Einwilligungsdaten sofort entfernt werden.
+        var clock = new AdjustableTimeProvider();
+        var engine = CreateEngine(clock);
+        var storagePath = Path.Combine(_directory, "highscores.json");
+        Directory.CreateDirectory(_directory);
+        var timestamp = clock.GetUtcNow();
+        var legacyEntry = new[]
+        {
+            new
+            {
+                roundId = Guid.NewGuid(),
+                ownerClientId = "player",
+                entry = new
+                {
+                    entryId = Guid.NewGuid(),
+                    displayName = "Test player",
+                    mode = GameMode.Laser,
+                    score = 25,
+                    completedAt = timestamp
+                },
+                email = "old@example.invalid",
+                leaderboardConsent = true,
+                prizeNotificationConsent = true,
+                privacyVersion = "2026-10-27",
+                consentedAt = timestamp,
+                expiresAt = timestamp.AddHours(12),
+                deletionCode = new string('A', 48)
+            }
+        };
+        File.WriteAllText(storagePath, JsonSerializer.Serialize(legacyEntry));
+
+        var service = CreateService(engine, clock, storagePath);
+
+        Assert.HasCount(1, service.GetHighscores(GameMode.Laser));
+        var storedJson = File.ReadAllText(storagePath).ToLowerInvariant();
+        Assert.DoesNotContain("old@example.invalid", storedJson);
+        Assert.DoesNotContain("email", storedJson);
+        Assert.DoesNotContain("consent", storedJson);
+        Assert.DoesNotContain("privacyversion", storedJson);
     }
 
     [TestMethod]
@@ -172,31 +220,28 @@ public sealed class HighscoreServiceTests
     }
 
     [TestMethod]
-    [DataRow("", "winner@example.invalid", true, true, "2026-10-27")]
-    [DataRow("Test player", "invalid", true, true, "2026-10-27")]
-    [DataRow("Test player", "winner@example.invalid", false, true, "2026-10-27")]
-    [DataRow("Test player", "winner@example.invalid", true, false, "2026-10-27")]
-    [DataRow("Test player", "winner@example.invalid", true, true, "outdated")]
-    public void Highscores_InvalidRegistrationDoesNotStartRound(string name, string email, bool leaderboardConsent,
-        bool prizeConsent, string version)
+    [DataRow("")]
+    [DataRow(" 	 ")]
+    [DataRow("This display name is longer than forty chars")]
+    [DataRow("\u0001")]
+    public void Highscores_InvalidNameDoesNotStartRound(string name)
     {
-        // Prüft fehlenden Namen, ungültige E-Mail, fehlenden Zweck und veraltete Einwilligungen serverseitig.
+        // Prüft, dass leere, zu lange oder Steuerzeichen enthaltende Namen serverseitig abgewiesen werden.
         var clock = new AdjustableTimeProvider();
         var engine = CreateEngine(clock);
         var service = CreateService(engine, clock);
-        Assert.ThrowsExactly<ArgumentException>(() => service.StartRound("player",
-            new PlayerRegistration(name, email, leaderboardConsent, prizeConsent, version)));
+        Assert.ThrowsExactly<ArgumentException>(() => service.StartRound("player", new PlayerRegistration(name)));
         Assert.AreEqual(GamePhase.Attract, engine.GetSnapshot().Phase);
     }
 
     [TestMethod]
-    public void Highscores_NameOnlyAndImmediateRestartAreSupported()
+    public void Highscores_NameOnlyRegistrationAndImmediateRestartAreSupported()
     {
-        // Prüft freiwillige E-Mail, Zuschauerablehnung und Speicherung vor einem unmittelbar folgenden Neustart.
+        // Prüft den Start nur mit Namen, die Ablehnung eines Watchers und Speicherung vor einem unmittelbaren Neustart.
         var clock = new AdjustableTimeProvider();
         var engine = CreateEngine(clock);
         var service = CreateService(engine, clock);
-        var registration = Registration() with { Email = null, PrizeNotificationConsent = false };
+        var registration = new PlayerRegistration("Test player");
         Assert.IsFalse(service.StartRound("watcher", registration));
         Assert.IsTrue(service.StartRound("player", registration));
         clock.Advance(TimeSpan.FromSeconds(60));
@@ -204,7 +249,7 @@ public sealed class HighscoreServiceTests
         Assert.HasCount(1, service.GetHighscores(GameMode.Laser));
     }
 
-    private static PlayerRegistration Registration() => new("Test player", "winner@example.invalid", true, true, "2026-10-27");
+    private static PlayerRegistration Registration() => new("Test player");
 
     private static GameEngine CreateEngine(TimeProvider clock)
     {
@@ -218,8 +263,7 @@ public sealed class HighscoreServiceTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["PlayerData:StoragePath"] = storagePath ?? Path.Combine(_directory, "highscores.json"),
-            ["PlayerData:ContactEmail"] = "privacy@example.invalid"
+            ["PlayerData:StoragePath"] = storagePath ?? Path.Combine(_directory, "highscores.json")
         }).Build();
         return new HighscoreService(engine, clock, configuration);
     }

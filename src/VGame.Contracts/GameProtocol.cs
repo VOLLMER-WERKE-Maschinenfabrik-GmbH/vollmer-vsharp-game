@@ -141,12 +141,9 @@ public sealed record GameSnapshot(
     GameStageArea? StageArea = null,
     bool WasAborted = false);
 
-public sealed record PlayerRegistration(string DisplayName, string? Email, bool LeaderboardConsent,
-    bool PrizeNotificationConsent, string PrivacyVersion);
+public sealed record PlayerRegistration(string DisplayName);
 
 public sealed record HighscoreEntry(Guid EntryId, string DisplayName, GameMode Mode, int Score, DateTimeOffset CompletedAt);
-
-public sealed record PlayerDataNotice(string Version, string ContactEmail, string TimeZoneId, string Retention);
 
 public sealed record OwnHighscore(HighscoreEntry Entry, string DeletionCode);
 

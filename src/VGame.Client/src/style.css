@@ -241,14 +241,7 @@ canvas { display: block; outline: none; }
 .cam-field { display: grid; gap: 8px; min-width: 0; }
 .cam-field input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 2px solid #91f700; border-radius: 0; background: #00d300; color: #001600; font: inherit; }
 .cam-field input::placeholder { color: #164c16; }
-.cam-field input:disabled { border-color: #3a4b3b; background: #162217; color: #bac6bb; }
 .cam-field input:focus-visible { outline: 2px solid var(--selection-yellow); outline-offset: 3px; }
-.cam-optional { color: #b6bdb8; font-size: 13px; }
-.cam-check { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; line-height: 1.5; font-size: 14px; cursor: pointer; }
-.cam-check input { width: 24px; height: 24px; margin: 0; accent-color: #00d300; }
-.cam-privacy { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
-.cam-privacy summary { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-.cam-privacy p { margin-bottom: 0; }
 .cam-status { margin: 0; padding: 8px; background: var(--selection-yellow); color: #101410; font-size: 13px; line-height: 1.5; }
 .cam-error { margin: 0; color: #ff8894; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .cam-actions, .cam-modes { display: flex; flex-wrap: wrap; gap: 6px; }

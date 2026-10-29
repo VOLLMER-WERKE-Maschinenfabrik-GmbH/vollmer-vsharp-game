@@ -499,7 +499,7 @@ public sealed class GameHubIntegrationTests
         await watcher.StartAsync(TestContext.CancellationToken);
         await player.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("registration-player", ClientRole.Player), TestContext.CancellationToken);
         await watcher.InvokeAsync<JoinResponse>("JoinGame", new JoinRequest("registration-watcher", ClientRole.Watcher), TestContext.CancellationToken);
-        var registration = new PlayerRegistration("Test player", "winner@example.invalid", true, true, "2026-10-27");
+        var registration = new PlayerRegistration("Test player");
         Assert.IsFalse(await watcher.InvokeAsync<bool>("StartRegisteredRound", registration, TestContext.CancellationToken));
         Assert.IsTrue(await player.InvokeAsync<bool>("StartRegisteredRound", registration, TestContext.CancellationToken));
         var running = await player.InvokeAsync<GameSnapshot>("GetSnapshot", TestContext.CancellationToken);
